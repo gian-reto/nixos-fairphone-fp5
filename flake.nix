@@ -19,12 +19,12 @@
     };
 
     # Returns nixpkgs for the given build host system architecture.
-    mkBuilderPkgs = system: import nixpkgs {inherit system;} // commonNixpkgsOptions;
+    mkBuilderPkgs = system: import nixpkgs ({inherit system;} // commonNixpkgsOptions);
     # Given the architecture of the build host system, returns nixpkgs that produces outputs for
     # `aarch64-linux`. Uses cross-compilation when the builder system is not `aarch64-linux`.
     mkTargetPkgs = system:
       if system == targetSystem
-      then import nixpkgs {system = targetSystem;} // commonNixpkgsOptions
+      then import nixpkgs ({system = targetSystem;} // commonNixpkgsOptions)
       else (mkBuilderPkgs system).pkgsCross.aarch64-multiplatform;
   in
     flake-utils.lib.eachSystem ["x86_64-linux" "aarch64-linux"] (system: let
@@ -45,13 +45,35 @@
           echo "  - file:      Inspect file types"
           echo ""
           echo "Build individual packages:"
+          echo "  nix build .#firmware"
           echo "  nix build .#kernel"
+          echo "  nix build .#pil-squasher"
         '';
       };
 
-      # Custom kernel package for Fairphone 5.
-      packages.kernel = targetPkgs.callPackage ./packages/kernel {
-        builderPkgs = builderPkgs;
+      packages = {
+        # Firmware package for Fairphone 5.
+        firmware = let
+          # Extend `builderPkgs` to add custom build-time packages.
+          builderPkgs' =
+            builderPkgs
+            // {
+              pil-squasher = builderPkgs.callPackage ./packages/pil-squasher {};
+            };
+        in
+          targetPkgs.callPackage ./packages/firmware {
+            builderPkgs = builderPkgs';
+          };
+
+        # Custom kernel package for Fairphone 5.
+        kernel = targetPkgs.callPackage ./packages/kernel {
+          builderPkgs = builderPkgs;
+        };
+
+        # Qualcomm firmware squasher to convert split `.mdt` (meta data table) firmware files to
+        # monolithic `.mbn` (bulti-binary) format. Note: This is a build-time tool that runs during
+        # firmware preparation (not on the device), so we use `builderPkgs` here.
+        pil-squasher = builderPkgs.callPackage ./packages/pil-squasher {};
       };
     });
 }
