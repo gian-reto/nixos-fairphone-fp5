@@ -43,7 +43,15 @@
           echo "  - fastboot:  Flash images to device"
           echo "  - mkbootimg: Build Android boot images"
           echo "  - file:      Inspect file types"
+          echo ""
+          echo "Build individual packages:"
+          echo "  nix build .#kernel"
         '';
+      };
+
+      # Custom kernel package for Fairphone 5.
+      packages.kernel = targetPkgs.callPackage ./packages/kernel {
+        builderPkgs = builderPkgs;
       };
     });
 }

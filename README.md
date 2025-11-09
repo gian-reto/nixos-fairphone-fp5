@@ -6,15 +6,15 @@ The Fairphone 5 uses a Qualcomm QCM6490 SoC, which is based on the ARM architect
 
 ## Current Status
 
-TBD.
+- Kernel: 6.17.0
 
 ## Getting Started
 
 TBD.
 
-## Contributing
+## Development & Contribution
 
-TBD.
+Simply enter the provided Nix devshell by running `nix develop` in this repository. The devshell provides all necessary tools and dependencies for building and flashing NixOS on the Fairphone 5, as well as building individual packages contained in this repository (e.g., the custom kernel package).
 
 ### AI
 
