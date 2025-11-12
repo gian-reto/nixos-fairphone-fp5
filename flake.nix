@@ -158,21 +158,25 @@
       devShells.default = builderPkgs.mkShell {
         packages = with builderPkgs; [android-tools binutils file];
         shellHook = ''
-          echo "NixOS Fairphone 5 development environment"
-          echo ""
-          echo "Available tools:"
-          echo "  - fastboot:  Flash images to device"
-          echo "  - mkbootimg: Build Android boot images"
-          echo "  - file:      Inspect file types"
-          echo ""
-          echo "Build individual packages:"
-          echo "  nix build .#firmware-fairphone-fp5"
-          echo "  nix build .#kernel-fairphone-fp5"
-          echo "  nix build .#pil-squasher"
-          echo ""
-          echo "Build individual images:"
-          echo "  nix build .#boot-image-minimal"
-          echo "  nix build .#rootfs-image-minimal"
+          # Only print help message in interactive shells.
+          if [[ $- == *i* ]]
+          then
+              echo "NixOS Fairphone 5 development environment"
+              echo ""
+              echo "Available tools:"
+              echo "  - fastboot:  Flash images to device"
+              echo "  - mkbootimg: Build Android boot images"
+              echo "  - file:      Inspect file types"
+              echo ""
+              echo "Build individual packages:"
+              echo "  nix build .#firmware-fairphone-fp5"
+              echo "  nix build .#kernel-fairphone-fp5"
+              echo "  nix build .#pil-squasher"
+              echo ""
+              echo "Build individual images:"
+              echo "  nix build .#boot-image-minimal"
+              echo "  nix build .#rootfs-image-minimal"
+          fi
         '';
       };
 

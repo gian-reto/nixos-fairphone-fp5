@@ -17,54 +17,77 @@ Additional details will be added here as development progresses.
 > [!TIP]
 > Note: This project has cross-compilation support, so if you build the boot and rootfs image on an x86_64 host using the provided devshell, the resulting outputs will correctly be built for the aarch64 architecture of the Fairphone 5.
 
-### Prerequisites:
+> [!IMPORTANT]
+> When booting NixOS, the display will show various artifacts, and the screen will be black for a brief moment. This is expected behavior and doesn't mean something is wrong. Just wait a bit until the device has fully booted and the login prompt appears.
+
+**Prerequisites:**
 
 - A Fairphone 5 device, obviously :)
 - The device must have an unlocked bootloader. Follow the instructions on the [Fairphone 5 page](<https://wiki.postmarketos.org/wiki/Fairphone_5_(fairphone-fp5)>) in the PostmarketOS Wiki if you haven't done this yet.
 - A NixOS host to build the images. Other distributions that have Nix installed may also work, but have not been tested.
 
-### Building the Images
+To build the necessary images and flash them to your Fairphone 5, you can either use the provided `build-and-flash.sh` script, or build and flash manually. In both cases, make sure to do the following preparatory steps first:
 
 1. Put your device into `fastboot` mode by turning it off first, and then holding the volume down and power button simultaneously until the device powers on and displays the `fastboot` screen.
 2. Connect the Fairphone 5 to your host machine via USB-C.
 3. Clone this repository.
-4. `cd` into the repository directory and enter the Nix devshell (execute all following steps marked with the ❄️ symbol inside the devshell):
+4. `cd` into the repository directory.
+
+### Build and Flash using the Script
+
+All you need to do is run the provided `build-and-flash.sh` script using the following command:
+
+```sh
+./scripts/build-and-flash.sh
+```
+
+After the flashing process is complete, you are asked to choose whether you want to reboot the device immediately to boot into NixOS.
+
+### Build and Flash Manually
+
+<details>
+
+<summary>Extend to see instructions</summary>
+
+1. Enter the Nix devshell (execute all following steps marked with the ❄️ symbol inside the devshell):
 
    ```sh
    nix develop
    ```
 
-5. ❄️ Build the boot image:
+2. ❄️ Build the boot image:
 
    ```sh
    nix build .#boot-image-minimal
    ```
 
-6. ❄️ Flash the boot image to the phone's boot partition:
+3. ❄️ Flash the boot image to the phone's boot partition:
 
    ```sh
    fastboot flash boot result
    ```
 
-7. ❄️ Build the rootfs image:
+4. ❄️ Build the rootfs image:
 
    ```sh
    nix build .#rootfs-image-minimal
    ```
 
-8. ❄️ Flash the rootfs image to the phone's userdata partition:
+5. ❄️ Flash the rootfs image to the phone's userdata partition:
 
    ```sh
    fastboot flash userdata result
    ```
 
-9. ❄️ Reboot the device:
+6. ❄️ Reboot the device:
 
    ```sh
    fastboot reboot
    ```
 
-10. The device should now boot into NixOS! The default user and password are both `admin`, so make sure to change the password after your first login.
+7. The device should now boot into NixOS! The default user and password are both `admin`, so make sure to change the password after your first login.
+
+</details>
 
 ## Development & Contribution
 
