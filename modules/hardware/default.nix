@@ -3,6 +3,10 @@
   pkgs,
   ...
 }: {
+  imports = [
+    ./resize-rootfs.nix
+  ];
+
   # Target architecture for Fairphone 5.
   nixpkgs.hostPlatform = "aarch64-linux";
 
