@@ -62,6 +62,7 @@
         ]);
 
     hostConfigs = {
+      gnome-mobile = [./hosts/gnome-mobile];
       minimal = [./hosts/minimal];
     };
     mkNixosConfiguration = pkgs: modules:
@@ -174,7 +175,9 @@
               echo "  nix build .#pil-squasher"
               echo ""
               echo "Build individual images:"
+              echo "  nix build .#boot-image-gnome-mobile"
               echo "  nix build .#boot-image-minimal"
+              echo "  nix build .#rootfs-image-gnome-mobile"
               echo "  nix build .#rootfs-image-minimal"
           fi
         '';
