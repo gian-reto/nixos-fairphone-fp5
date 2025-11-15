@@ -4,6 +4,11 @@ This repository aims to port NixOS to the Fairphone 5, a modular and sustainable
 
 The Fairphone 5 uses a Qualcomm QCM6490 SoC, which is based on the ARM architecture and is very similar to the Qualcomm SC7280 SoC found in various other devices. This repository builds on existing work by the amazing PostmarketOS community, mainly their work on porting the Linux kernel and other essential components to the Fairphone 5. For more information regarding the status of the port, see the [Fairphone 5 page](<https://wiki.postmarketos.org/wiki/Fairphone_5_(fairphone-fp5)>) in the PostmarketOS Wiki.
 
+<div align="center">
+   <img src="./.docs/picture-gnome-mobile-1.jpeg" alt="Home screen on Fairphone 5 running NixOS with GNOME Mobile" width="300" hspace="10" vspace="10" />
+   <img src="./.docs/picture-gnome-mobile-2.jpeg" alt="Terminal on Fairphone 5 running NixOS with GNOME Mobile" width="300" hspace="10" vspace="10" />
+</div>
+
 ## Current Status
 
 - Kernel: 6.17.0
