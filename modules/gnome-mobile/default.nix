@@ -1,4 +1,5 @@
 {
+  config,
   lib,
   pkgs,
   ...
@@ -80,15 +81,20 @@
 
   # Install essential mobile packages.
   environment.systemPackages = with pkgs; [
-    # ModemManager for cellular connectivity.
-    modemmanager
-
     # NetworkManager for connection management.
     networkmanager
 
     # Mobile-friendly GNOME apps.
     gnome-console # Terminal.
   ];
+
+  # Ensure ModemManager is started before NetworkManager.
+  systemd.services.ModemManager = lib.mkIf config.nixos-fairphone-fp5.modem.enable {
+    aliases = ["dbus-org.freedesktop.ModemManager1.service"];
+    wantedBy = ["NetworkManager.service"];
+    partOf = ["NetworkManager.service"];
+    after = ["NetworkManager.service"];
+  };
 
   # Enable sound with PipeWire.
   services.pulseaudio.enable = lib.mkForce false;

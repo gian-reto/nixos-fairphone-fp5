@@ -2,13 +2,20 @@
   # Import hardware-specific configuration for Fairphone 5 and GNOME Mobile.
   imports = [
     ../../modules/hardware
+    ../../modules/modem
     ../../modules/gnome-mobile
   ];
 
   networking.hostName = "fairphone";
 
+  # Enable Qualcomm modem support.
+  nixos-fairphone-fp5.modem.enable = true;
+
   # Enable experimental Nix features (flakes).
   nix.settings.experimental-features = ["nix-command" "flakes"];
+
+  # Disable documentation (hides desktop icon).
+  documentation.nixos.enable = false;
 
   # Create admin user with default password for testing.
   users = {

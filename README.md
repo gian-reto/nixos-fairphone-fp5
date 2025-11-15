@@ -13,7 +13,7 @@ The Fairphone 5 uses a Qualcomm QCM6490 SoC, which is based on the ARM architect
 - Audio: Not tested yet
 - Battery: Works
 - Camera: Selfie and wide-angle cameras work (quality is not amazing)
-- Cellular modem: Not detected (under investigation)
+- Cellular modem: Works
 - Screen: Works
 - Touchscreen: Works
 - Wi-Fi: Works

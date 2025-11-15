@@ -1,0 +1,13 @@
+diff --git a/pd-mapper.c b/pd-mapper.c
+index f5d45ee..a1f1179 100644
+--- a/pd-mapper.c
++++ b/pd-mapper.c
+@@ -207,7 +207,7 @@ static int concat_path(char *base_path, char *firmware_path, char *path)
+ }
+ 
+ #ifndef ANDROID
+-#define FIRMWARE_BASE	"/lib/firmware/"
++#define FIRMWARE_BASE	"/run/current-system/firmware/"
+ #define FIRMWARE_PARAM_PATH	"/sys/module/firmware_class/parameters/path"
+ 
+ static DIR *opendir_firmware(char *firmware_path, char *out_path_opened)

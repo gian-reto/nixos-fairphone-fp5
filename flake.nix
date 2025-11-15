@@ -30,6 +30,21 @@
       kernel-fairphone-fp5 = final.callPackage ./packages/kernel {
         builderPkgs = final.buildPackages;
       };
+
+      # Protection domain mapper for Qualcomm modems.
+      pd-mapper = final.callPackage ./packages/qrtr/pd-mapper.nix {};
+
+      # QMI IDL compiler (build dependency for rmtfs).
+      qmic = final.callPackage ./packages/qrtr/qmic.nix {};
+
+      # QRTR (Qualcomm IPC Router) userspace tools.
+      qrtr = final.callPackage ./packages/qrtr/qrtr.nix {};
+
+      # Remote filesystem service for Qualcomm modems.
+      rmtfs = final.callPackage ./packages/qrtr/rmtfs.nix {};
+
+      # TFTP server over QRTR for Qualcomm modems.
+      tqftpserv = final.callPackage ./packages/qrtr/tqftpserv.nix {};
     };
 
     # Fix cross-compilation issues where build-time tools are incorrectly cross-compiled.
@@ -173,6 +188,11 @@
               echo "  nix build .#firmware-fairphone-fp5"
               echo "  nix build .#kernel-fairphone-fp5"
               echo "  nix build .#pil-squasher"
+              echo "  nix build .#pd-mapper"
+              echo "  nix build .#qmic"
+              echo "  nix build .#qrtr"
+              echo "  nix build .#rmtfs"
+              echo "  nix build .#tqftpserv"
               echo ""
               echo "Build individual images:"
               echo "  nix build .#boot-image-gnome-mobile"
@@ -186,7 +206,7 @@
       packages =
         {
           inherit (builderPkgs) pil-squasher;
-          inherit (targetPkgs) firmware-fairphone-fp5 kernel-fairphone-fp5;
+          inherit (targetPkgs) firmware-fairphone-fp5 kernel-fairphone-fp5 pd-mapper qmic qrtr rmtfs tqftpserv;
         }
         # Map over NixOS configurations and provide package aliases for building their images.
         // nixpkgs.lib.foldlAttrs
