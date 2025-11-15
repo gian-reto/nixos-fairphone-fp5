@@ -59,8 +59,18 @@
     mkPkgs = system:
       import nixpkgs {
         inherit system;
-        config.allowUnfree = true;
         overlays = [fairphoneOverlay];
+
+        config = {
+          allowUnfree = true;
+
+          # FIXME: This is needed because of `chatty`, which supports Matrix and therefore
+          # unfortunately includes a dependency on `olm`, which is currently marked as
+          # insecure. This should be removed or fixed ASAP.
+          permittedInsecurePackages = [
+            "olm-3.2.16"
+          ];
+        };
       };
 
     # Given the architecture of the build host system, returns Nixpkgs that compile to the

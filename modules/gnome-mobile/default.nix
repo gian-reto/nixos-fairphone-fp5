@@ -85,8 +85,14 @@
     networkmanager
 
     # Mobile-friendly GNOME apps.
+    chatty # SMS/MMS messaging app.
     gnome-console # Terminal.
+    papers # Document viewer.
+    showtime # Video player.
   ];
+  programs = {
+    calls.enable = true; # Phone calls.
+  };
 
   # Ensure ModemManager is started before NetworkManager.
   systemd.services.ModemManager = lib.mkIf config.nixos-fairphone-fp5.modem.enable {

@@ -1,4 +1,4 @@
-{
+{pkgs, ...}: {
   # Import hardware-specific configuration for Fairphone 5 and GNOME Mobile.
   imports = [
     ../../modules/hardware
@@ -16,6 +16,41 @@
 
   # Disable documentation (hides desktop icon).
   documentation.nixos.enable = false;
+
+  # Core GNOME apps are set by the `gnome-mobile` module. The additional packages
+  # listed here can be seen as an example of other useful apps for mobile use.
+  environment.systemPackages = with pkgs; [
+    # Apps.
+    dialect # Translation app.
+    firefox-mobile
+    gnome-decoder # QR code scanner & generator.
+    gnome-software
+    resources # System resource monitor.
+    warp # Magic wormhole file transfer.
+
+    # GNOME extensions.
+    gnomeExtensions.app-hider # Hide desktop icons.
+  ];
+
+  # Enable Flatpak.
+  services.flatpak.enable = true;
+  systemd.services.flatpak-remote-add-flathub = {
+    description = "Add Flathub repository for Flatpak";
+    wantedBy = ["multi-user.target"];
+    after = ["network-online.target"];
+    wants = ["network-online.target"];
+
+    serviceConfig = {
+      Type = "oneshot";
+      RemainAfterExit = true;
+      ExecStart = "${pkgs.flatpak}/bin/flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo";
+      # Restart on failure (e.g., network not actually connected yet).
+      Restart = "on-failure";
+      RestartSec = "30s";
+      # Give up after 20 attempts to avoid infinite retries.
+      StartLimitBurst = 20;
+    };
+  };
 
   # Create admin user with default password for testing.
   users = {
