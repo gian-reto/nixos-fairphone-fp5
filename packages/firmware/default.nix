@@ -1,8 +1,8 @@
 {
-  builderPkgs,
   fetchFromGitHub,
   findutils,
   lib,
+  pil-squasher,
   stdenv,
 }:
 stdenv.mkDerivation {
@@ -31,7 +31,7 @@ stdenv.mkDerivation {
     platforms = lib.platforms.linux;
   };
 
-  nativeBuildInputs = with builderPkgs; [pil-squasher findutils];
+  nativeBuildInputs = [pil-squasher findutils];
 
   buildPhase = ''
     runHook preBuild
