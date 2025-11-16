@@ -1,7 +1,7 @@
 {
-  builderPkgs,
   fetchFromGitHub,
   fetchFromGitLab,
+  gzip,
   lib,
   linuxKernel,
   stdenv,
@@ -90,10 +90,10 @@ in
     postInstall =
       (oldAttrs.postInstall or "")
       + ''
-        # Decompress Image.gz to Image for NixOS bootloader checks.
+        # Decompress Image.gz to Image for NixOS compatibility.
         if [ -f "$out/Image.gz" ] && [ ! -f "$out/Image" ]; then
           echo "Decompressing Image.gz to Image for NixOS compatibility..."
-          ${lib.getExe' builderPkgs.gzip "gunzip"} -c "$out/Image.gz" > "$out/Image"
+          ${lib.getExe' gzip "gunzip"} -c "$out/Image.gz" > "$out/Image"
         fi
       '';
   })

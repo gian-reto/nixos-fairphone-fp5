@@ -3,6 +3,11 @@
   pkgs,
   ...
 }: {
+  # Apply the Fairphone FP5 overlay.
+  nixpkgs.overlays = [
+    (import ../../overlays/fairphone-fp5)
+  ];
+
   imports = [
     ./resize-rootfs.nix
   ];

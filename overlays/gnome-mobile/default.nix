@@ -1,5 +1,5 @@
-self: super: let
-  gvc = super.fetchFromGitLab {
+final: prev: let
+  gvc = prev.fetchFromGitLab {
     domain = "gitlab.gnome.org";
     owner = "GNOME";
     repo = "libgnome-volume-control";
@@ -8,7 +8,7 @@ self: super: let
   };
 
   # GVDB (GNOME Variant Database).
-  gvdb = super.fetchFromGitLab {
+  gvdb = prev.fetchFromGitLab {
     domain = "gitlab.gnome.org";
     owner = "GNOME";
     repo = "gvdb";
@@ -17,9 +17,9 @@ self: super: let
   };
 in {
   # Override GNOME Shell with mobile-optimized version.
-  gnome-shell = super.gnome-shell.overrideAttrs (old: rec {
+  gnome-shell = prev.gnome-shell.overrideAttrs (old: rec {
     version = "48.mobile.0";
-    src = super.fetchFromGitLab {
+    src = prev.fetchFromGitLab {
       domain = "gitlab.gnome.org";
       owner = "verdre";
       repo = "gnome-shell-mobile";
@@ -40,8 +40,8 @@ in {
     buildInputs =
       old.buildInputs
       ++ [
-        super.modemmanager # `/org/gnome/shell/misc/modemManager.js`
-        super.libgudev # `/org/gnome/gjs/modules/esm/gi.js`
+        prev.modemmanager # `/org/gnome/shell/misc/modemManager.js`
+        prev.libgudev # `/org/gnome/gjs/modules/esm/gi.js`
       ];
     postFixup =
       old.postFixup
@@ -51,9 +51,9 @@ in {
   });
 
   # Mobile-specific GNOME Settings Daemon package.
-  gnome-settings-daemon-mobile = super.gnome-settings-daemon.overrideAttrs (old: rec {
+  gnome-settings-daemon-mobile = prev.gnome-settings-daemon.overrideAttrs (old: rec {
     version = "48.mobile.0";
-    src = super.fetchFromGitLab {
+    src = prev.fetchFromGitLab {
       domain = "gitlab.gnome.org";
       owner = "verdre";
       repo = "gnome-settings-daemon-mobile";
@@ -70,10 +70,10 @@ in {
 
   # Override Mutter with mobile-optimized version. This also ensures it uses the mobile GNOME Settings Daemon.
   mutter =
-    (super.mutter.override {gnome-settings-daemon = self.gnome-settings-daemon-mobile;}).overrideAttrs
+    (prev.mutter.override {gnome-settings-daemon = final.gnome-settings-daemon-mobile;}).overrideAttrs
     (old: rec {
       version = "48.mobile.0";
-      src = super.fetchFromGitLab {
+      src = prev.fetchFromGitLab {
         domain = "gitlab.gnome.org";
         owner = "verdre";
         repo = "mutter-mobile";
