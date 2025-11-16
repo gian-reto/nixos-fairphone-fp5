@@ -27,105 +27,22 @@ Additional details will be added here as development progresses.
 
 Note: Hardware was tested using the GNOME Mobile builds. When using the minimal images, the device boots up and the screen works, but the device has to be controlled remotely over USB Serial or SSH, because there is no virtual keyboard (and thus no way to log in on the device itself).
 
-## Getting Started (Minimal, no GUI)
+## Getting Started
 
-> [!TIP]
-> Note: The minimal images support cross-compilation, so if you build the boot and rootfs image on an x86_64 host using the provided devshell, the resulting outputs will correctly be built for the aarch64 architecture of the Fairphone 5.
-
-> [!IMPORTANT]
-> When booting NixOS, the display will show various artifacts, and the screen will be black for a brief moment. This is expected behavior and doesn't mean something is wrong. Just wait a bit until the device has fully booted and the login prompt appears.
+> [!CAUTION]
+> Cross-compilation is currently not supported, so you need to build the images on an `aarch64-linux` NixOS host. However, because Nix has excellent support for remote builders, you can also delegate the build to a remote aarch64 builder (more info can be found further down below).
 
 **Prerequisites:**
 
 - A Fairphone 5 device, obviously :)
 - The device must have an unlocked bootloader. Follow the instructions on the [Fairphone 5 page](<https://wiki.postmarketos.org/wiki/Fairphone_5_(fairphone-fp5)>) in the PostmarketOS Wiki if you haven't done this yet.
-- A NixOS host to build the images. Other distributions that have Nix installed may also work, but have not been tested.
+- An `aarch64-linux` NixOS host to build the images. Other distributions that have Nix installed may also work, but have not been tested. Alternatively, you can use a remote builder from any Nix-enabled system.
 
-To build the necessary images and flash them to your Fairphone 5, you can either use the provided `build-and-flash.sh` script, or build and flash manually. In both cases, make sure to do the following preparatory steps first:
+**Optional: Set up Remote Builder**
 
-1. Put your device into `fastboot` mode by turning it off first, and then holding the volume down and power button simultaneously until the device powers on and displays the `fastboot` screen.
-2. Connect the Fairphone 5 to your host machine via USB-C.
-3. Clone this repository.
-4. `cd` into the repository directory.
+I recommend using [nixbuild.net](https://nixbuild.net) as a remote builder. It's pretty easy to set up, works well in my testing, and they provide the necessary `aarch64-linux` builders. The builds of each derivation are even cached, so subsequent builds are usually pretty fast!
 
-### Build and Flash using the Script
-
-All you need to do is run the provided `build-and-flash.sh` script using the following command, and follow the on-screen instructions (Note: Choose the "minimal" configuration when prompted):
-
-```sh
-./scripts/build-and-flash.sh
-```
-
-After the flashing process is complete, you are asked to choose whether you want to reboot the device immediately to boot into NixOS.
-
-### Build and Flash Manually
-
-<details>
-
-<summary>Extend to see instructions</summary>
-
-1. Enter the Nix devshell (execute all following steps marked with the ❄️ symbol inside the devshell):
-
-   ```sh
-   nix develop
-   ```
-
-2. ❄️ Build the boot image:
-
-   ```sh
-   nix build .#boot-image-minimal
-   ```
-
-3. ❄️ Flash the boot image to the phone's boot partition:
-
-   ```sh
-   fastboot flash boot result
-   ```
-
-4. ❄️ Build the rootfs image:
-
-   ```sh
-   nix build .#rootfs-image-minimal
-   ```
-
-5. ❄️ Flash the rootfs image to the phone's userdata partition:
-
-   ```sh
-   fastboot flash userdata result
-   ```
-
-6. ❄️ Reboot the device:
-
-   ```sh
-   fastboot reboot
-   ```
-
-7. The device should now boot into NixOS! The default user and password are both `admin`, so make sure to change the password after your first login.
-
-</details>
-
-## Getting Started (GNOME Mobile)
-
-> [!CAUTION]
-> Cross-compilation is currently not supported for the GNOME Mobile images. Therefore, you must build the images on an aarch64 NixOS host. However, because Nix has excellent support for remote builders, you can also delegate the build to a remote aarch64 builder (more info can be found further down below).
-
-**Prerequisites:**
-
-See [Getting Started (Minimal, no GUI)](#getting-started-minimal-no-gui).
-
-### Build and Flash using the Script
-
-As mentioned above, building and flashing locally using the provided script is only possible on an aarch64 NixOS host. If you meet this requirement, you can simply run the following command to build and flash the GNOME Mobile images (Note: Choose the "gnome-mobile" configuration when prompted):
-
-```sh
-./scripts/build-and-flash.sh
-```
-
-### Build and Flash Manually (nixbuild.net)
-
-The following instructions describe how to build the GNOME Mobile images using [nixbuild.net](https://nixbuild.net) as a remote builder, and then flash them locally to your Fairphone 5. Other remote builders might work as well, but nixbuild.net is the only one I have tested so far, and it works perfectly for this use case and is easy to set up.
-
-First, set up an account, add your SSH public key to the service as described in their [getting started guide](https://docs.nixbuild.net/getting-started/#getting-started). Note: You don't need to set their server as a builder for your entire NixOS configuration as described in their guide (section "Quick NixOS Configuration"); you can simply set the `programs.ssh.extraConfig` and `programs.ssh.knownHosts` options in your config as they describe in the guide, and ignore the `nix.distributedBuilds` and `nix.buildMachines` options. This way, you can use the remote builder on-demand as needed.
+First, set up an account, add your SSH public key to the service as described in their [getting started guide](https://docs.nixbuild.net/getting-started/#getting-started). Note: You don't need to set their server as a builder for your entire NixOS configuration as described in their guide (section "Quick NixOS Configuration"); you can simply set the `programs.ssh.extraConfig` and `programs.ssh.knownHosts` options in your config as described in their guide, and ignore the `nix.distributedBuilds` and `nix.buildMachines` options. This way, you can use the remote builder on-demand as needed.
 
 Verify whether you are able to connect to their server via SSH:
 
@@ -133,55 +50,139 @@ Verify whether you are able to connect to their server via SSH:
 sudo ssh eu.nixbuild.net shell
 ```
 
-Then, you're ready to build the GNOME Mobile images using the following steps:
+If you're able to connect, you're ready to use the remote builder to build your images.
 
-<details>
+### Add Module to your NixOS Configuration
 
-<summary>Extend to see instructions</summary>
+If you want to use NixOS your own Fairphone 5, the images built from the example configurations provided in this repository will probably not be sufficient. Instead, you can add the Fairphone 5 module to your own `flake.nix` and build your own images like this:
 
-1. Enter the Nix devshell (execute all following steps marked with the ❄️ symbol inside the devshell):
+```nix
+{
+  inputs = {
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    nixos-fairphone-fp5.url = "github:gian-reto/nixos-fairphone-fp5";
+  };
 
-   ```sh
-   nix develop
-   ```
+  outputs = { self, nixpkgs, nixos-fairphone-fp5, ... }: {
+   nixosConfigurations.my-fairphone = nixpkgs.lib.nixosSystem {
+      system = "aarch64-linux";
+      modules = [
+        # Import the Fairphone 5 NixOS module.
+        nixos-fairphone-fp5.nixosModules.default
 
-2. ❄️ Build the boot image:
+        # Import your own custom configuration.
+        ./hosts/my-fairphone/default.nix
+      ];
+    };
 
-   ```sh
-   nix build .#packages.aarch64-linux.boot-image-gnome-mobile --max-jobs 0 --builders "ssh://eu.nixbuild.net aarch64-linux - 100 1 big-parallel,benchmark" --option builders-use-substitutes true
-   ```
+    # Use the `mkBootImage` and `mkRootfsImage` functions provided by this flake to be able to build
+    # boot and rootfs images from your custom configuration, so you can easily flash the first
+    # generation of your configuration to your Fairphone 5 using `fastboot`.
+    packages.aarch64-linux =
+      let
+        pkgs = nixpkgs.legacyPackages.aarch64-linux;
+      in {
+        boot-image = nixos-fairphone-fp5.lib.mkBootImage
+          self.nixosConfigurations.my-fairphone
+          pkgs;
 
-3. ❄️ Flash the boot image to the phone's boot partition:
+        rootfs-image = nixos-fairphone-fp5.lib.mkRootfsImage
+          self.nixosConfigurations.my-fairphone
+          pkgs;
+      };
+  };
+}
+```
 
-   ```sh
-   fastboot flash boot result
-   ```
+> [!TIP]
+> If you use remote builders, I recommend configuring Nix to always use remote builders by default on your Fairphone. This way, you don't have to rebuild locally on your phone if you do a `nixos-rebuild switch` on the device itself. Otherwise, builds might take a very long time or even fail due to insufficient resources (I have not even dared to try yet, so I'm not sure what happens!).
 
-4. ❄️ Build the rootfs image:
+### Build and Flash Images
 
-   ```sh
-   nix build .#packages.aarch64-linux.rootfs-image-gnome-mobile --max-jobs 0 --builders "ssh://eu.nixbuild.net aarch64-linux - 100 1 big-parallel,benchmark" --option builders-use-substitutes true
-   ```
+1. Put your device into `fastboot` mode by turning it off first, and then holding the volume down and power button simultaneously until the device powers on and displays the `fastboot` screen.
+2. Connect the Fairphone 5 to your host machine via USB-C.
 
-5. ❄️ Flash the rootfs image to the phone's userdata partition:
+If you added the image packages as shown above, you can simply build the images using the following commands:
 
-   ```sh
-   fastboot flash userdata result
-   ```
+3. Build the boot image (locally on an `aarch64-linux` host):
 
-6. ❄️ Reboot the device:
+```sh
+nix build .#packages.aarch64-linux.boot-image
+```
 
-   ```sh
-   fastboot reboot
-   ```
+Or in case you want to use nixbuild.net as a remote builder, the command is slightly different:
 
-7. The device should now boot into NixOS! The default user and password are both `admin`, so make sure to change the password after your first login.
+```sh
+nix build .#packages.aarch64-linux.boot-image --max-jobs 0 --builders "ssh://eu.nixbuild.net aarch64-linux - 100 1 big-parallel,benchmark" --option builders-use-substitutes true
+```
 
-</details>
+4. The previous command should output a symlink called `result`, which points to the boot image you just built. You can flash the image to the phone's boot partition as follows:
+
+```sh
+nix shell nixpkgs#android-tools -c fastboot flash boot result
+```
+
+5. Build the rootfs image (locally on an `aarch64-linux` host):
+
+```sh
+nix build .#packages.aarch64-linux.rootfs-image
+```
+
+Or in case you want to use nixbuild.net as a remote builder:
+
+```sh
+nix build .#packages.aarch64-linux.rootfs-image --max-jobs 0 --builders "ssh://eu.nixbuild.net aarch64-linux - 100 1 big-parallel,benchmark" --option builders-use-substitutes true
+```
+
+6. The previous command should again output a symlink called `result` (in fact, it overrides the existing symlink if you built the boot image before, so always make sure you have built the correct image before you flash!), which points to the rootfs image you just built. You can flash the image to the phone's userdata partition as follows:
+
+```sh
+nix shell nixpkgs#android-tools -c fastboot flash userdata result
+```
+
+7. Now that both images are flashed, you can reboot the device:
+
+```sh
+nix shell nixpkgs#android-tools -c fastboot reboot
+```
+
+Just wait until the device has fully booted, which could take a while. You should then be greeted by the login prompt or screen of your NixOS system!
+
+> [!IMPORTANT]
+> When booting NixOS, the display will show various artifacts, and the screen will be black for a brief moment. This is expected behavior and doesn't mean something is wrong. Just wait a bit until the device has fully booted and the login prompt or screen appears.
+
+## Advanced Usage
+
+In some advanced use cases, you might want to change the process of building the images, or do other customizations. In that case, you can use the `fairphone-fp5` overlay provided by this flake directly, which allows you to use the included packages in the way you want.
+
+```nix
+{
+  inputs.nixos-fairphone-fp5.url = "github:gian-reto/nixos-fairphone-fp5";
+
+  outputs = { nixpkgs, nixos-fairphone-fp5, ... }: {
+    nixosConfigurations.my-fairphone = nixpkgs.lib.nixosSystem {
+      system = "aarch64-linux";
+      modules = [
+        {
+          nixpkgs.overlays = [ nixos-fairphone-fp5.overlays.default ];
+
+          # Now you have access to all Fairphone packages:
+          # pkgs.kernel-fairphone-fp5
+          # pkgs.firmware-fairphone-fp5
+          # pkgs.pd-mapper, pkgs.qrtr, pkgs.rmtfs, etc.
+        }
+        # Your custom configuration...
+      ];
+    };
+  };
+}
+```
 
 ## Development & Contribution
 
-Simply enter the provided Nix devshell by running `nix develop` in this repository. The devshell provides all necessary tools and dependencies for building and flashing NixOS on the Fairphone 5, as well as building individual packages contained in this repository (e.g., the custom kernel package).
+This flake outputs packages for building boot and rootfs images for the two example host configurations in `./hosts`. These can be built on their own and flashed to a Fairphone 5 as described in the "Getting Started" section above. By default, the user is called "admin", and the password is "admin" as well.
+
+At the moment, the development process is mostly done by changing code, building new images, and then testing them on the device. This can be quite tedious, as the build times are relatively long (even with a remote builder), but for now this is the best way to make sure everything works as expected on the actual hardware.
 
 ### AI
 
