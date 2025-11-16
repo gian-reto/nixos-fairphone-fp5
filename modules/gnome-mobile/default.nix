@@ -9,6 +9,10 @@
     (import ../../overlays/gnome-mobile)
   ];
 
+  imports = [
+    ./dconf.nix
+  ];
+
   services.xserver = {
     # Disable the X11 windowing system (we use Wayland instead).
     enable = false;
