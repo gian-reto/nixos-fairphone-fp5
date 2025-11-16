@@ -20,6 +20,9 @@
   # Core GNOME apps are set by the `gnome-mobile` module. The additional packages
   # listed here can be seen as an example of other useful apps for mobile use.
   environment.systemPackages = with pkgs; [
+    # Miscellaneous packages.
+    wl-clipboard # Wayland clipboard util, also used for Waydroid clipboard sharing.
+
     # Apps.
     dialect # Translation app.
     firefox-mobile
@@ -51,6 +54,9 @@
       StartLimitBurst = 20;
     };
   };
+
+  # Enable Waydroid.
+  virtualisation.waydroid.enable = true;
 
   # Create admin user with default password for testing.
   users = {
