@@ -18,6 +18,31 @@
 in {
   options.nixos-fairphone-fp5.modem = {
     enable = lib.mkEnableOption "Qualcomm modem support";
+
+    verbose = lib.mkOption {
+      type = lib.types.bool;
+      default = false;
+      description = ''
+        Enable verbose logging for modem services.
+
+        When enabled, adds the -v flag to pd-mapper, rmtfs, and tqftpserv services,
+        which causes them to output detailed debug information. This is useful for
+        troubleshooting modem issues but produces more log output.
+      '';
+    };
+
+    quickSuspendResume = lib.mkOption {
+      type = lib.types.bool;
+      default = true;
+      description = ''
+        Enable ModemManager's --test-quick-suspend-resume for better power management.
+
+        When enabled, ModemManager will use quick suspend/resume functionality,
+        which improves power management on Qualcomm devices. This is recommended
+        by PostmarketOS for Qualcomm modems. Some users might want to disable this
+        if it causes stability issues.
+      '';
+    };
   };
 
   config = lib.mkIf cfg.enable {
@@ -33,12 +58,12 @@ in {
     # Enable ModemManager for high-level modem management.
     networking.modemmanager.enable = true;
 
-    # Override ModemManager service to add --test-quick-suspend-resume flag for better power
-    # management. This is recommended for Qualcomm devices by PostmarketOS.
+    # Override ModemManager service to optionally add --test-quick-suspend-resume flag for better
+    # power management. This is recommended for Qualcomm devices by PostmarketOS.
     systemd.services.ModemManager = {
       serviceConfig.ExecStart = lib.mkForce [
         "" # Clear the default ExecStart.
-        "${pkgs.modemmanager}/sbin/ModemManager --test-quick-suspend-resume"
+        "${pkgs.modemmanager}/sbin/ModemManager${lib.optionalString cfg.quickSuspendResume " --test-quick-suspend-resume"}"
       ];
     };
 
@@ -49,7 +74,7 @@ in {
         wantedBy = ["multi-user.target"];
 
         serviceConfig = {
-          ExecStart = "${pkgs.tqftpserv}/bin/tqftpserv -v";
+          ExecStart = "${pkgs.tqftpserv}/bin/tqftpserv${lib.optionalString cfg.verbose " -v"}";
           Restart = "always";
           RestartSec = "1";
         };
@@ -61,7 +86,7 @@ in {
         wantedBy = ["multi-user.target"];
 
         serviceConfig = {
-          ExecStart = "${pkgs.pd-mapper}/bin/pd-mapper -v";
+          ExecStart = "${pkgs.pd-mapper}/bin/pd-mapper${lib.optionalString cfg.verbose " -v"}";
           Restart = "always";
           RestartSec = "1";
         };
@@ -75,7 +100,7 @@ in {
         wantedBy = ["multi-user.target"];
 
         serviceConfig = {
-          ExecStart = "${pkgs.rmtfs}/bin/rmtfs -r -P -s -v";
+          ExecStart = "${pkgs.rmtfs}/bin/rmtfs -r -P -s${lib.optionalString cfg.verbose " -v"}";
           Restart = "always";
           RestartSec = "1";
         };
