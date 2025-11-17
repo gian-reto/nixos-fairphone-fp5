@@ -17,7 +17,15 @@
   cfg = config.nixos-fairphone-fp5.modem;
 in {
   options.nixos-fairphone-fp5.modem = {
-    enable = lib.mkEnableOption "Qualcomm modem support";
+    enable = lib.mkOption {
+      type = lib.types.bool;
+      default = true;
+      description = ''
+        Enable Qualcomm modem support for Fairphone 5.
+
+        This sets up the necessary userspace services to manage the QDM5577 modem.
+      '';
+    };
 
     verbose = lib.mkOption {
       type = lib.types.bool;
