@@ -89,6 +89,13 @@ If you want to use NixOS your own Fairphone 5, the images built from the example
         rootfs-image = nixos-fairphone-fp5.lib.mkRootfsImage
           self.nixosConfigurations.my-fairphone
           pkgs;
+
+        # Alternatively, if you use Home Manager, use `mkRootfsImageWithHomeManager` to build the
+        # rootfs image including Home Manager configuration instead of `mkRootfsImage`:
+        #
+        # rootfs-image = nixos-fairphone-fp5.lib.mkRootfsImageWithHomeManager
+        #   self.nixosConfigurations.my-fairphone
+        #   pkgs;
       };
   };
 }
