@@ -82,6 +82,63 @@
           ln -s /nix/var/nix/profiles/system/init ./files/init
         '';
       };
+
+    # Builds an `ext4` image containing the NixOS system that can be flashed to the `userdata`
+    # partition using fastboot, but with additional `home-manager` support.
+    mkRootfsImageWithHomeManager = nixosConfig: pkgs: let
+      # Get all users that have `home-manager` configurations.
+      hmUsers = builtins.attrNames (nixosConfig.config.home-manager.users or {});
+
+      # Collect all `home-manager` activation packages.
+      hmActivationPackages =
+        builtins.map
+        (user: nixosConfig.config.home-manager.users.${user}.home.activationPackage)
+        hmUsers;
+    in
+      pkgs.callPackage "${pkgs.path}/nixos/lib/make-ext4-fs.nix" {
+        storePaths =
+          [
+            nixosConfig.config.system.build.toplevel
+          ]
+          ++ hmActivationPackages; # Include all home-manager activation packages
+        # Don't compress, as firmware needs to be uncompressed.
+        compressImage = false;
+        # Must match `fileSystems."/".device` label defined in`modules/hardware/default.nix`!
+        volumeLabel = "nixos";
+
+        populateImageCommands = ''
+          # Create the profile directory structure.
+          mkdir -p ./files/nix/var/nix/profiles
+          mkdir -p ./files/nix/var/nix/profiles/per-user
+
+          # Create first-generation NixOS profile.
+          ln -s ${nixosConfig.config.system.build.toplevel} ./files/nix/var/nix/profiles/system-1-link
+          # Set "system" to point to first-generation profile.
+          ln -s system-1-link ./files/nix/var/nix/profiles/system
+
+          # The bootloader expects /init.
+          ln -s /nix/var/nix/profiles/system/init ./files/init
+
+          # Create home-manager profiles for each user.
+          ${builtins.concatStringsSep "\n" (builtins.map (user: ''
+              # Create profile directory for ${user}.
+              mkdir -p ./files/nix/var/nix/profiles/per-user/${user}
+
+              # Create first-generation home-manager profile for ${user}.
+              ln -s ${nixosConfig.config.home-manager.users.${user}.home.activationPackage} \
+                ./files/nix/var/nix/profiles/per-user/${user}/home-manager-1-link
+              # Set home-manager to point to first-generation home profile.
+              ln -s home-manager-1-link \
+                ./files/nix/var/nix/profiles/per-user/${user}/home-manager
+
+              # Create user's .nix-profile symlink.
+              mkdir -p ./files/home/${user}
+              ln -s /nix/var/nix/profiles/per-user/${user}/home-manager \
+                ./files/home/${user}/.nix-profile
+            '')
+            hmUsers)}
+        '';
+      };
   in
     flake-utils.lib.eachSystem ["aarch64-linux"] (system: let
       # Nixpkgs for building test images.
@@ -130,7 +187,7 @@
     // {
       # Reusable library functions.
       lib = {
-        inherit mkBootImage mkRootfsImage;
+        inherit mkBootImage mkRootfsImage mkRootfsImageWithHomeManager;
       };
 
       # NixOS modules for external consumption.
