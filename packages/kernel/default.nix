@@ -32,6 +32,13 @@
   # - CONFIG_U_SERIAL_CONSOLE: Enables USB serial gadget console output for debugging.
   # - CONFIG_USB_G_SERIAL: Classic USB serial gadget driver.
   # - CONFIG_ANDROID_BINDERFS: Required for Waydroid (Android container support).
+  #
+  # Additional netfilter/iptables extensions required by NixOS firewall:
+  # - CONFIG_NETFILTER_XT_MATCH_PKTTYPE: Packet type matching.
+  # - CONFIG_NETFILTER_XT_MATCH_LIMIT: Rate limiting for firewall rules.
+  # - CONFIG_NETFILTER_XT_MATCH_RECENT: Recent connections tracking.
+  # - CONFIG_NETFILTER_XT_MATCH_STATE: Connection state matching.
+  # - CONFIG_NETFILTER_XT_TARGET_LOG: Logging target for firewall rules.
   configfile = stdenv.mkDerivation {
     name = "kernel-config";
     src = "${pmaportsSrc}/device/testing/linux-postmarketos-qcom-sc7280/config-postmarketos-qcom-sc7280.aarch64";
@@ -44,6 +51,11 @@
         -e 's/# CONFIG_U_SERIAL_CONSOLE is not set/CONFIG_U_SERIAL_CONSOLE=y/' \
         -e 's/# CONFIG_USB_G_SERIAL is not set/CONFIG_USB_G_SERIAL=y/' \
         -e 's/# CONFIG_ANDROID_BINDERFS is not set/CONFIG_ANDROID_BINDERFS=y/' \
+        -e 's/# CONFIG_NETFILTER_XT_MATCH_PKTTYPE is not set/CONFIG_NETFILTER_XT_MATCH_PKTTYPE=m/' \
+        -e 's/# CONFIG_NETFILTER_XT_MATCH_LIMIT is not set/CONFIG_NETFILTER_XT_MATCH_LIMIT=m/' \
+        -e 's/# CONFIG_NETFILTER_XT_MATCH_RECENT is not set/CONFIG_NETFILTER_XT_MATCH_RECENT=m/' \
+        -e 's/# CONFIG_NETFILTER_XT_MATCH_STATE is not set/CONFIG_NETFILTER_XT_MATCH_STATE=m/' \
+        -e 's/# CONFIG_NETFILTER_XT_TARGET_LOG is not set/CONFIG_NETFILTER_XT_TARGET_LOG=m/' \
         $src > config
     '';
 
