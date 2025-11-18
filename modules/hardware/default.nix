@@ -100,6 +100,44 @@ in {
       # Disable GRUB bootloader, as we use Android boot image format.
       loader.grub.enable = false;
 
+      # On first boot, perform one-time initialization tasks. This is similar to how
+      # `sd-image.nix` handles first-boot setup for SD card images, see:
+      # https://github.com/NixOS/nixpkgs/blob/master/nixos/modules/installer/sd-card/sd-image.nix.
+      postBootCommands = ''
+        # On first boot, register the contents of the initial Nix store.
+        if [ -f /nix-path-registration ]; then
+          set -euo pipefail
+          set -x
+
+          # Register the contents of the initial Nix store.
+          # The /nix-path-registration file is created by make-ext4-fs.nix and contains
+          # the database entries for all store paths included in the rootfs image.
+          # Without this step, Nix doesn't know about pre-installed paths and tries to
+          # build them, which fails on the device.
+          ${config.nix.package.out}/bin/nix-store --load-db < /nix-path-registration
+
+          # nixos-rebuild also requires a "system" profile and an /etc/NIXOS tag.
+          touch /etc/NIXOS
+          ${config.nix.package.out}/bin/nix-env -p /nix/var/nix/profiles/system --set /run/current-system
+
+          # Fix ownership of per-user profile directories.
+          # During image build, these directories are created by root, but users need
+          # to own their own profile directories for home-manager to manage them.
+          if [ -d /nix/var/nix/profiles/per-user ]; then
+            for profile_dir in /nix/var/nix/profiles/per-user/*; do
+              if [ -d "$profile_dir" ]; then
+                username=$(basename "$profile_dir")
+                echo "Fixing ownership of $profile_dir for user $username"
+                chown -R "''${username}:users" "$profile_dir"
+              fi
+            done
+          fi
+
+          # Prevents this from running on later boots.
+          rm -f /nix-path-registration
+        fi
+      '';
+
       kernelParams =
         lib.mkAfter
         (
