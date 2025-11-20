@@ -79,6 +79,25 @@ in
 
     allowImportFromDerivation = true;
     configfile = configfile;
+    kernelPatches = [
+      {
+        name = "qca-fix-bdaddr-check";
+        patch = ./patches/qca-fix-bdaddr-check.patch;
+      }
+      {
+        name = "fix-bdaddr-unconfigured";
+        patch = ./patches/fix-bdaddr-unconfigured.patch;
+      }
+      {
+        name = "hci-qca-drop-unused-event";
+        patch = ./patches/hci-qca-drop-unused-event.patch;
+      }
+      {
+        # TODO: Remove as soon as `sc7280-mainline` has been updated to v6.18 or later.
+        name = "fix-h4-recv-corruption";
+        patch = ./patches/fix-h4-recv-corruption.patch;
+      }
+    ];
     modDirVersion = modDirVersion;
     src = kernelSrc;
     stdenv =

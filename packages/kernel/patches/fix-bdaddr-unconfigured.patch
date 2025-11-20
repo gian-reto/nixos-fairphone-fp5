@@ -1,0 +1,65 @@
+Bluetooth: hci_sync: Don't mark device unconfigured if set_bdaddr exists
+
+The current logic treats HCI_QUIRK_USE_BDADDR_PROPERTY the same as
+HCI_QUIRK_INVALID_BDADDR, automatically marking invalid_bdaddr=true. This causes
+devices to be set to HCI_UNCONFIGURED state even when:
+1. The device has a valid set_bdaddr callback.
+2. Userspace can configure the address later via btmgmt.
+
+For Qualcomm WCN6750 and similar chips:
+* Device boots with placeholder address 00:00:00:00:5A:AD.
+* Driver sets HCI_QUIRK_USE_BDADDR_PROPERTY to prefer device tree address.
+* No device tree address exists (no local-bd-address property).
+* Driver provides set_bdaddr callback for runtime address configuration.
+* Current code marks device as HCI_UNCONFIGURED.
+* Device becomes unusable (EOPNOTSUPP on hci_up).
+* Userspace tools (bootmac, btmgmt) cannot configure the address.
+
+This patch changes the logic so that HCI_QUIRK_USE_BDADDR_PROPERTY only marks
+the address as invalid if:
+1. Device tree lookup was attempted but failed, AND
+2. No set_bdaddr callback exists to allow userspace configuration.
+
+If set_bdaddr exists, the device is left in configured state so userspace
+can set the address via btmgmt public-addr command.
+
+diff --git a/net/bluetooth/hci_sync.c b/net/bluetooth/hci_sync.c
+index 7a7d49890858..f356238a6b65 100644
+--- a/net/bluetooth/hci_sync.c
++++ b/net/bluetooth/hci_sync.c
+@@ -4973,20 +4973,33 @@ static int hci_dev_setup_sync(struct hci_dev *hdev)
+ 	/* The transport driver can set the quirk to mark the
+ 	 * BD_ADDR invalid before creating the HCI device or in
+ 	 * its setup callback.
++	 *
++	 * HCI_QUIRK_INVALID_BDADDR: Address is truly invalid, needs external config.
++	 * HCI_QUIRK_USE_BDADDR_PROPERTY: Prefer device tree address if available.
+ 	 */
+-	invalid_bdaddr = hci_test_quirk(hdev, HCI_QUIRK_INVALID_BDADDR) ||
+-			 hci_test_quirk(hdev, HCI_QUIRK_USE_BDADDR_PROPERTY);
++	invalid_bdaddr = hci_test_quirk(hdev, HCI_QUIRK_INVALID_BDADDR);
+ 	if (!ret) {
++		/* Try to get address from device tree if quirk is set */
+ 		if (hci_test_quirk(hdev, HCI_QUIRK_USE_BDADDR_PROPERTY) &&
+ 		    !bacmp(&hdev->public_addr, BDADDR_ANY))
+ 			hci_dev_get_bd_addr_from_property(hdev);
+ 
++		/* If we got a valid address from device tree, program it to hardware */
+ 		if (invalid_bdaddr && bacmp(&hdev->public_addr, BDADDR_ANY) &&
+ 		    hdev->set_bdaddr) {
+ 			ret = hdev->set_bdaddr(hdev, &hdev->public_addr);
+ 			if (!ret)
+ 				invalid_bdaddr = false;
+ 		}
++
++		/* If HCI_QUIRK_USE_BDADDR_PROPERTY is set but device tree had no address,
++		 * only mark as invalid if there's no set_bdaddr callback.
++		 * If set_bdaddr exists, userspace can configure the address later.
++		 */
++		if (hci_test_quirk(hdev, HCI_QUIRK_USE_BDADDR_PROPERTY) &&
++		    !bacmp(&hdev->public_addr, BDADDR_ANY) &&
++		    !hdev->set_bdaddr)
++			invalid_bdaddr = true;
+ 	}
+ 
+ 	/* The transport driver can set these quirks before
