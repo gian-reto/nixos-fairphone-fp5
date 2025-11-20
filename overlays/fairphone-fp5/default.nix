@@ -25,4 +25,7 @@ final: prev: {
 
   # TFTP server over QRTR for Qualcomm modems.
   tqftpserv = final.callPackage ../../packages/qrtr/tqftpserv.nix {};
+
+  # Configure MAC addresses at boot for WiFi and Bluetooth.
+  bootmac = final.callPackage ../../packages/bootmac {};
 }

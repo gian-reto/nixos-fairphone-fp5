@@ -194,6 +194,7 @@
       nixosModules = {
         minimal = {
           imports = [
+            ./modules/bootmac
             ./modules/hardware
             ./modules/modem
           ];
@@ -201,6 +202,7 @@
 
         gnome-mobile = {
           imports = [
+            ./modules/bootmac
             ./modules/hardware
             ./modules/modem
             ./modules/gnome-mobile
@@ -210,6 +212,7 @@
         # Export `gnome-mobile` as the default module.
         default = {
           imports = [
+            ./modules/bootmac
             ./modules/hardware
             ./modules/modem
             ./modules/gnome-mobile
