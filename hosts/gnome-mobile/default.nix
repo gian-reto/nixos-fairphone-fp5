@@ -1,6 +1,7 @@
 {pkgs, ...}: {
   # Import hardware-specific configuration for Fairphone 5 and GNOME Mobile.
   imports = [
+    ../../modules/bootmac
     ../../modules/hardware
     ../../modules/modem
     ../../modules/gnome-mobile
