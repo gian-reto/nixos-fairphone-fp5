@@ -4,17 +4,19 @@
   pkgs,
   ...
 }: let
-  cfg = config.nixos-fairphone-fp5.gnome-mobile;
+  cfg = config.nixos-fairphone-fp5.gui.dconf;
 in {
-  options.nixos-fairphone-fp5.gnome-mobile = {
+  options.nixos-fairphone-fp5.gui.dconf = {
+    enable = lib.mkEnableOption "Enable some default dconf settings for GNOME-based DEs.";
+
     defaultWallpaper = {
       enable = lib.mkOption {
         type = lib.types.bool;
         default = true;
         description = ''
-          Enable to set a custom default wallpaper for GNOME.
+          Enable to set a custom default wallpaper.
 
-          Note: This can still be changed by the user later in GNOME settings.
+          Note: This can still be changed by the user later in settings.
         '';
       };
 
@@ -33,9 +35,9 @@ in {
       type = lib.types.enum ["default" "prefer-dark"];
       default = "default";
       description = ''
-        Default color scheme for GNOME (light or dark mode).
+        Default color scheme (light or dark mode).
 
-        Note: This can still be changed by the user later in GNOME settings.
+        Note: This can still be changed by the user later in settings.
       '';
     };
   };
@@ -61,35 +63,36 @@ in {
       '';
       destination = "/share/gnome-background-properties/nixos-fairphone-wallpaper.xml";
     };
-  in {
-    # Install wallpaper metadata if wallpaper is enabled.
-    environment.systemPackages = lib.optionals cfg.defaultWallpaper.enable [
-      nixos-fairphone-wallpaper-info
-    ];
-
-    programs.dconf = {
-      enable = true;
-
-      profiles.user.databases = [
-        {
-          settings =
-            {
-              "org/gnome/desktop/interface" = {
-                color-scheme = cfg.colorScheme;
-              };
-            }
-            // lib.optionalAttrs cfg.defaultWallpaper.enable {
-              "org/gnome/desktop/background" = {
-                color-shading-type = "solid";
-                picture-options = "zoom";
-                picture-uri = "file:///${cfg.defaultWallpaper.path}";
-                picture-uri-dark = "file:///${cfg.defaultWallpaper.path}";
-                primary-color = "#000000";
-                secondary-color = "#000000";
-              };
-            };
-        }
+  in
+    lib.mkIf cfg.enable {
+      # Install wallpaper metadata if wallpaper is enabled.
+      environment.systemPackages = lib.optionals cfg.defaultWallpaper.enable [
+        nixos-fairphone-wallpaper-info
       ];
+
+      programs.dconf = {
+        enable = true;
+
+        profiles.user.databases = [
+          {
+            settings =
+              {
+                "org/gnome/desktop/interface" = {
+                  color-scheme = cfg.colorScheme;
+                };
+              }
+              // lib.optionalAttrs cfg.defaultWallpaper.enable {
+                "org/gnome/desktop/background" = {
+                  color-shading-type = "solid";
+                  picture-options = "zoom";
+                  picture-uri = "file:///${cfg.defaultWallpaper.path}";
+                  picture-uri-dark = "file:///${cfg.defaultWallpaper.path}";
+                  primary-color = "#000000";
+                  secondary-color = "#000000";
+                };
+              };
+          }
+        ];
+      };
     };
-  };
 }

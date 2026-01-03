@@ -170,6 +170,12 @@
           modules = [./hosts/minimal];
           pkgs = exampleConfigPkgs;
         };
+        phosh = nixpkgs.lib.nixosSystem {
+          inherit system;
+
+          modules = [./hosts/phosh];
+          pkgs = exampleConfigPkgs;
+        };
       };
     in {
       # Example images built from internal host configs for testing.
@@ -192,6 +198,15 @@
 
       # NixOS modules for external consumption.
       nixosModules = {
+        gnome-mobile = {
+          imports = [
+            ./modules/bootmac
+            ./modules/hardware
+            ./modules/modem
+            ./modules/gnome-mobile
+          ];
+        };
+
         minimal = {
           imports = [
             ./modules/bootmac
@@ -200,12 +215,12 @@
           ];
         };
 
-        gnome-mobile = {
+        phosh = {
           imports = [
             ./modules/bootmac
             ./modules/hardware
             ./modules/modem
-            ./modules/gnome-mobile
+            ./modules/phosh
           ];
         };
 
