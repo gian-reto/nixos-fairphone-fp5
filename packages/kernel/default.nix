@@ -6,13 +6,14 @@
   linuxKernel,
   stdenv,
   ...
-}: let
+}:
+let
   # Kernel source from `sc7280-mainline` repository.
   kernelSrc = fetchFromGitHub {
     owner = "sc7280-mainline";
     repo = "linux";
-    rev = "v6.17.0-sc7280";
-    hash = "sha256-k6Fp5Dhy1s7Jnpc1qywHZxmkH2+OAYk1Yy8vSBSyR5k=";
+    rev = "v7.0.8-sc7280";
+    hash = "sha256-dU+UeCr8aVIg226ZnqryPlLuOPsKkKgR/KN/LkvHDGo=";
   };
 
   # Source of postmarketOS `pmaports` repository.
@@ -20,8 +21,8 @@
     domain = "gitlab.postmarketos.org";
     owner = "postmarketOS";
     repo = "pmaports";
-    rev = "305cddc07f3739747f0662c824e4febccf0e1e28";
-    hash = "sha256-QInrf7Sf9j+bB26bsC1hYOnWPz/n5K3WlC50cq7megQ=";
+    rev = "6ff32835f458c490e008373eeaac3d2a5f82f311";
+    hash = "sha256-1vrNlbwFbaJmHTAmu/vW0tIcmRYHpRx/lWHvqvhY/sk=";
   };
 
   # Use the kernel configuration from PostmarketOS for the `sc7280` chipset as the base.
@@ -45,7 +46,7 @@
   # - CONFIG_TYPEC_UCSI: Unchanged, as upstream already uses `=y`.
   configfile = stdenv.mkDerivation {
     name = "kernel-config";
-    src = "${pmaportsSrc}/device/testing/linux-postmarketos-qcom-sc7280/config-postmarketos-qcom-sc7280.aarch64";
+    src = "${pmaportsSrc}/device/community/linux-postmarketos-qcom-sc7280/config-postmarketos-qcom-sc7280.aarch64";
     dontUnpack = true;
 
     buildPhase = ''
@@ -61,6 +62,8 @@
         -e 's/# CONFIG_NETFILTER_XT_MATCH_STATE is not set/CONFIG_NETFILTER_XT_MATCH_STATE=m/' \
         -e 's/# CONFIG_NETFILTER_XT_TARGET_LOG is not set/CONFIG_NETFILTER_XT_TARGET_LOG=m/' \
         -e 's/# CONFIG_TYPEC_DP_ALTMODE is not set/CONFIG_TYPEC_DP_ALTMODE=y/' \
+        -e 's/^CONFIG_EFI=y/# CONFIG_EFI is not set/' \
+        -e 's/^CONFIG_EFI_STUB=y/# CONFIG_EFI_STUB is not set/' \
         $src > config
     '';
 
@@ -79,49 +82,38 @@
   };
   modDirVersion = kernelVersion.string;
 in
-  (linuxKernel.manualConfig {
-    inherit lib;
+(linuxKernel.manualConfig {
+  inherit lib;
 
-    allowImportFromDerivation = true;
-    configfile = configfile;
-    kernelPatches = [
-      {
-        # TODO: Remove as soon as `sc7280-mainline` has been updated to v6.18 or later.
-        name = "fix-h4-recv-corruption";
-        patch = ./patches/fix-h4-recv-corruption.patch;
-      }
-      {
-        name = "hci-qca-drop-unused-event";
-        patch = ./patches/hci-qca-drop-unused-event.patch;
-      }
-    ];
-    modDirVersion = modDirVersion;
-    src = kernelSrc;
-    stdenv =
-      # Override `stdenv` to produce compressed kernel image target.
-      stdenv.override {
-        hostPlatform =
-          stdenv.hostPlatform
-          // {
-            linux-kernel =
-              stdenv.hostPlatform.linux-kernel
-              // {
-                target = "Image.gz";
-                installTarget = "zinstall";
-              };
-          };
+  allowImportFromDerivation = true;
+  inherit configfile modDirVersion;
+  kernelPatches = [
+    {
+      name = "hci-qca-drop-unused-event";
+      patch = ./patches/hci-qca-drop-unused-event.patch;
+    }
+  ];
+  src = kernelSrc;
+  stdenv =
+    # Override `stdenv` to produce compressed kernel image target.
+    stdenv.override {
+      hostPlatform = stdenv.hostPlatform // {
+        linux-kernel = stdenv.hostPlatform.linux-kernel // {
+          target = "Image.gz";
+          installTarget = "zinstall";
+        };
       };
-    version = kernelVersion.string;
-  }).overrideAttrs (oldAttrs: {
+    };
+  version = kernelVersion.string;
+}).overrideAttrs
+  (oldAttrs: {
     # Also install the uncompressed `Image` for NixOS compatibility. NixOS expects `Image` to exist,
     # even though we'll use `Image.gz` for boot.
-    postInstall =
-      (oldAttrs.postInstall or "")
-      + ''
-        # Decompress Image.gz to Image for NixOS compatibility.
-        if [ -f "$out/Image.gz" ] && [ ! -f "$out/Image" ]; then
-          echo "Decompressing Image.gz to Image for NixOS compatibility..."
-          ${lib.getExe' gzip "gunzip"} -c "$out/Image.gz" > "$out/Image"
-        fi
-      '';
+    postInstall = (oldAttrs.postInstall or "") + ''
+      # Decompress Image.gz to Image for NixOS compatibility.
+      if [ -f "$out/Image.gz" ] && [ ! -f "$out/Image" ]; then
+        echo "Decompressing Image.gz to Image for NixOS compatibility..."
+        ${lib.getExe' gzip "gunzip"} -c "$out/Image.gz" > "$out/Image"
+      fi
+    '';
   })
