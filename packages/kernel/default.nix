@@ -1,119 +1,150 @@
 {
   fetchFromGitHub,
-  fetchFromGitLab,
   gzip,
   lib,
   linuxKernel,
+  runCommand,
   stdenv,
   ...
-}:
-let
-  # Kernel source from `sc7280-mainline` repository.
+}: let
+  # Note: Keep this in sync with the Makefile in the pinned
+  # https://github.com/sc7280-mainline/linux source.
+  kernelVersion = "7.1.2";
+
+  # Kernel source from https://github.com/sc7280-mainline/linux.
   kernelSrc = fetchFromGitHub {
     owner = "sc7280-mainline";
     repo = "linux";
-    rev = "v7.0.8-sc7280";
-    hash = "sha256-dU+UeCr8aVIg226ZnqryPlLuOPsKkKgR/KN/LkvHDGo=";
+    # Note: Update the `kernelVersion` above when updating this revision.
+    rev = "17425f528fe51fef6e86847e92baffab3b78623e";
+    hash = "sha256-Q4mFSrRUS1+RIoPpdTxHr1lg5Ba2H9EPGJB20yOnKT0=";
   };
 
-  # Source of postmarketOS `pmaports` repository.
-  pmaportsSrc = fetchFromGitLab {
-    domain = "gitlab.postmarketos.org";
-    owner = "postmarketOS";
-    repo = "pmaports";
-    rev = "6ff32835f458c490e008373eeaac3d2a5f82f311";
-    hash = "sha256-1vrNlbwFbaJmHTAmu/vW0tIcmRYHpRx/lWHvqvhY/sk=";
+  # Upstream postmarketOS configuration for the SC7280 device, see:
+  # https://gitlab.postmarketos.org/postmarketOS/pmaports/-/blob/main/device/community/linux-postmarketos-qcom-sc7280/config-postmarketos-qcom-sc7280.aarch64.
+  pmosConfigFile = builtins.fetchurl {
+    url = "https://gitlab.postmarketos.org/postmarketOS/pmaports/-/raw/c9dbdc23ae775aa5cea8b857c123f1696c04528f/device/community/linux-postmarketos-qcom-sc7280/config-postmarketos-qcom-sc7280.aarch64";
+    sha256 = "1vjffmn4wx6b6yxp7cn80qpzm744n8h5wci5xwxrpf5f17rq9w87";
   };
 
-  # Use the kernel configuration from PostmarketOS for the `sc7280` chipset as the base.
-  #
-  # However, we need to override some options that are disabled in PostmarketOS config to
-  # make it compatible with NixOS and enable some useful stuff:
-  # - CONFIG_DMIID: NixOS asserts that this is enabled for some reason...
-  # - CONFIG_U_SERIAL_CONSOLE: Enables USB serial gadget console output for debugging.
-  # - CONFIG_USB_G_SERIAL: Classic USB serial gadget driver.
-  # - CONFIG_ANDROID_BINDERFS: Required for Waydroid (Android container support).
-  #
-  # Additional netfilter/iptables extensions required by NixOS firewall:
-  # - CONFIG_NETFILTER_XT_MATCH_PKTTYPE: Packet type matching.
-  # - CONFIG_NETFILTER_XT_MATCH_LIMIT: Rate limiting for firewall rules.
-  # - CONFIG_NETFILTER_XT_MATCH_RECENT: Recent connections tracking.
-  # - CONFIG_NETFILTER_XT_MATCH_STATE: Connection state matching.
-  # - CONFIG_NETFILTER_XT_TARGET_LOG: Logging target for firewall rules.
-  #
-  # DisplayPort output over USB-C:
-  # - CONFIG_TYPEC_DP_ALTMODE: Required for DP Alt Mode over USB-C to work.
-  # - CONFIG_TYPEC_UCSI: Unchanged, as upstream already uses `=y`.
-  configfile = stdenv.mkDerivation {
-    name = "kernel-config";
-    src = "${pmaportsSrc}/device/community/linux-postmarketos-qcom-sc7280/config-postmarketos-qcom-sc7280.aarch64";
-    dontUnpack = true;
-
-    buildPhase = ''
-      # Read the original config and apply our modifications.
-      sed \
-        -e 's/# CONFIG_DMIID is not set/CONFIG_DMIID=y/' \
-        -e 's/# CONFIG_U_SERIAL_CONSOLE is not set/CONFIG_U_SERIAL_CONSOLE=y/' \
-        -e 's/# CONFIG_USB_G_SERIAL is not set/CONFIG_USB_G_SERIAL=y/' \
-        -e 's/# CONFIG_ANDROID_BINDERFS is not set/CONFIG_ANDROID_BINDERFS=y/' \
-        -e 's/# CONFIG_NETFILTER_XT_MATCH_PKTTYPE is not set/CONFIG_NETFILTER_XT_MATCH_PKTTYPE=m/' \
-        -e 's/# CONFIG_NETFILTER_XT_MATCH_LIMIT is not set/CONFIG_NETFILTER_XT_MATCH_LIMIT=m/' \
-        -e 's/# CONFIG_NETFILTER_XT_MATCH_RECENT is not set/CONFIG_NETFILTER_XT_MATCH_RECENT=m/' \
-        -e 's/# CONFIG_NETFILTER_XT_MATCH_STATE is not set/CONFIG_NETFILTER_XT_MATCH_STATE=m/' \
-        -e 's/# CONFIG_NETFILTER_XT_TARGET_LOG is not set/CONFIG_NETFILTER_XT_TARGET_LOG=m/' \
-        -e 's/# CONFIG_TYPEC_DP_ALTMODE is not set/CONFIG_TYPEC_DP_ALTMODE=y/' \
-        -e 's/^CONFIG_EFI=y/# CONFIG_EFI is not set/' \
-        -e 's/^CONFIG_EFI_STUB=y/# CONFIG_EFI_STUB is not set/' \
-        $src > config
-    '';
-
-    installPhase = ''
-      cp config $out
-    '';
-  };
-
-  # Parse kernel version from Makefile.
-  kernelVersion = rec {
-    file = "${kernelSrc}/Makefile";
-    version = lib.head (builtins.match ".*VERSION = ([0-9]+).*" (builtins.readFile file));
-    patchlevel = lib.head (builtins.match ".*PATCHLEVEL = ([0-9]+).*" (builtins.readFile file));
-    sublevel = lib.head (builtins.match ".*SUBLEVEL = ([0-9]+).*" (builtins.readFile file));
-    string = "${version}.${patchlevel}.${sublevel}";
-  };
-  modDirVersion = kernelVersion.string;
-in
-(linuxKernel.manualConfig {
-  inherit lib;
-
-  allowImportFromDerivation = true;
-  inherit configfile modDirVersion;
-  kernelPatches = [
-    {
-      name = "hci-qca-drop-unused-event";
-      patch = ./patches/hci-qca-drop-unused-event.patch;
-    }
-  ];
-  src = kernelSrc;
-  stdenv =
-    # Override `stdenv` to produce compressed kernel image target.
-    stdenv.override {
-      hostPlatform = stdenv.hostPlatform // {
-        linux-kernel = stdenv.hostPlatform.linux-kernel // {
-          target = "Image.gz";
-          installTarget = "zinstall";
-        };
+  # Parse enabled module and built-in options in the same format as nixpkgs.
+  parseConfig = content: let
+    parseLine = line: let
+      match = builtins.match "(CONFIG_[^=]+)=([ym])" line;
+    in
+      lib.optional (match != null) {
+        name = builtins.elemAt match 0;
+        value = builtins.elemAt match 1;
       };
-    };
-  version = kernelVersion.string;
-}).overrideAttrs
+  in
+    builtins.listToAttrs (lib.concatMap parseLine (lib.splitString "\n" content));
+
+  pmosConfig = parseConfig (builtins.readFile pmosConfigFile);
+
+  # Overrides to the postmarketOS SC7280 base configuration.
+  configOverrides = {
+    # NixOS compatibility.
+    #
+    # Required by NixOS assertions.
+    DMIID = "y";
+
+    # USB serial console support.
+    #
+    # Enables console output through the USB serial gadget.
+    U_SERIAL_CONSOLE = "y";
+    # Enables the USB serial gadget driver.
+    USB_G_SERIAL = "y";
+
+    # NixOS firewall support.
+    #
+    # Enables packet-type matching.
+    NETFILTER_XT_MATCH_PKTTYPE = "m";
+    # Enables rate limiting.
+    NETFILTER_XT_MATCH_LIMIT = "m";
+    # Enables recent-connection tracking.
+    NETFILTER_XT_MATCH_RECENT = "m";
+    # Enables connection-state matching.
+    NETFILTER_XT_MATCH_STATE = "m";
+    # Enables firewall logging.
+    NETFILTER_XT_TARGET_LOG = "m";
+
+    # Android boot-image compatibility.
+    #
+    # Disabled because the bootloader loads Image.gz directly.
+    EFI = "n";
+    EFI_STUB = "n";
+    EFI_ZBOOT = "n";
+
+    # Misc. features.
+    #
+    # Required by Waydroid.
+    ANDROID_BINDERFS = "y";
+    # Enables DisplayPort Alt Mode negotiation.
+    TYPEC_DP_ALTMODE = "y";
+  };
+
+  overrideLines =
+    lib.mapAttrsToList (
+      name: value:
+        if value == "n"
+        then "# CONFIG_${name} is not set"
+        else "CONFIG_${name}=${value}"
+    )
+    configOverrides;
+
+  # Build-time configuration consumed by the kernel build. The complete postmarketOS
+  # config is preserved, and our overrides are appended before `make oldconfig`.
+  configfile = runCommand "kernel-config" {} ''
+    cat ${pmosConfigFile} > $out
+    cat >> $out <<'EOF'
+    ${lib.concatStringsSep "\n" overrideLines}
+    EOF
+  '';
+
+  # Evaluation-time configuration metadata consumed by nixpkgs. This y/m/n summary
+  # mirrors the build-time config without realizing and parsing `configfile`.
+  mergedConfig =
+    pmosConfig
+    // lib.mapAttrs' (name: value: lib.nameValuePair "CONFIG_${name}" value) configOverrides;
+in
+  (linuxKernel.manualConfig {
+    inherit configfile lib;
+
+    config = mergedConfig;
+    kernelPatches = [
+      {
+        name = "hci-qca-drop-unused-event";
+        patch = ./patches/hci-qca-drop-unused-event.patch;
+      }
+    ];
+    modDirVersion = kernelVersion;
+    src = kernelSrc;
+    stdenv =
+      # Override `stdenv` to produce compressed kernel image target.
+      stdenv.override {
+        hostPlatform =
+          stdenv.hostPlatform
+          // {
+            linux-kernel =
+              stdenv.hostPlatform.linux-kernel
+              // {
+                target = "Image.gz";
+                installTarget = "zinstall";
+              };
+          };
+      };
+    version = kernelVersion;
+  }).overrideAttrs
   (oldAttrs: {
     # Also install the uncompressed `Image` for NixOS compatibility. NixOS expects `Image` to exist,
     # even though we'll use `Image.gz` for boot.
-    postInstall = (oldAttrs.postInstall or "") + ''
-      # Decompress Image.gz to Image for NixOS compatibility.
-      if [ -f "$out/Image.gz" ] && [ ! -f "$out/Image" ]; then
-        echo "Decompressing Image.gz to Image for NixOS compatibility..."
-        ${lib.getExe' gzip "gunzip"} -c "$out/Image.gz" > "$out/Image"
-      fi
-    '';
+    postInstall =
+      (oldAttrs.postInstall or "")
+      + ''
+        # Decompress Image.gz to Image for NixOS compatibility.
+        if [ -f "$out/Image.gz" ] && [ ! -f "$out/Image" ]; then
+          echo "Decompressing Image.gz to Image for NixOS compatibility..."
+          ${lib.getExe' gzip "gunzip"} -c "$out/Image.gz" > "$out/Image"
+        fi
+      '';
   })
