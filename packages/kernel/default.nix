@@ -1,10 +1,8 @@
 {
   fetchFromGitHub,
-  gzip,
   lib,
   linuxKernel,
   runCommand,
-  stdenv,
   ...
 }: let
   # Note: Keep this in sync with the Makefile in the pinned
@@ -70,7 +68,9 @@
 
     # Android boot-image compatibility.
     #
-    # Disabled because the bootloader loads Image.gz directly.
+    # Keep the validated non-EFI `Image.gz` boot flow used by the stock bootloader.
+    # With `EFI_ZBOOT` enabled, the kernel's `zinstall` target would install
+    # `vmlinuz.efi` instead.
     EFI = "n";
     EFI_STUB = "n";
     EFI_ZBOOT = "n";
@@ -107,7 +107,7 @@
     pmosConfig
     // lib.mapAttrs' (name: value: lib.nameValuePair "CONFIG_${name}" value) configOverrides;
 in
-  (linuxKernel.manualConfig {
+  linuxKernel.manualConfig {
     inherit configfile lib;
 
     config = mergedConfig;
@@ -119,32 +119,7 @@ in
     ];
     modDirVersion = kernelVersion;
     src = kernelSrc;
-    stdenv =
-      # Override `stdenv` to produce compressed kernel image target.
-      stdenv.override {
-        hostPlatform =
-          stdenv.hostPlatform
-          // {
-            linux-kernel =
-              stdenv.hostPlatform.linux-kernel
-              // {
-                target = "Image.gz";
-                installTarget = "zinstall";
-              };
-          };
-      };
+    # Produce compressed kernel image target expected by the bootloader.
+    target = "Image.gz";
     version = kernelVersion;
-  }).overrideAttrs
-  (oldAttrs: {
-    # Also install the uncompressed `Image` for NixOS compatibility. NixOS expects `Image` to exist,
-    # even though we'll use `Image.gz` for boot.
-    postInstall =
-      (oldAttrs.postInstall or "")
-      + ''
-        # Decompress Image.gz to Image for NixOS compatibility.
-        if [ -f "$out/Image.gz" ] && [ ! -f "$out/Image" ]; then
-          echo "Decompressing Image.gz to Image for NixOS compatibility..."
-          ${lib.getExe' gzip "gunzip"} -c "$out/Image.gz" > "$out/Image"
-        fi
-      '';
-  })
+  }

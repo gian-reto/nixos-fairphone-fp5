@@ -13,8 +13,11 @@ final: prev: let
 
   # Import the pinned nixpkgs containing GNOME 48 packages.
   pkgs-gnome-48 = import nixpkgs-gnome-48 {
-    inherit (final) system;
-    config = final.config;
+    system = final.stdenv.hostPlatform.system;
+    # Forward only settings that are compatible with the pinned nixpkgs revision.
+    config = {
+      inherit (final.config) allowUnfree permittedInsecurePackages;
+    };
   };
 in {
   adwaita-icon-theme = pkgs-gnome-48.adwaita-icon-theme;
@@ -31,6 +34,7 @@ in {
   gnome-settings-daemon = pkgs-gnome-48.gnome-settings-daemon;
   gnome-shell = pkgs-gnome-48.gnome-shell;
   gsettings-desktop-schemas = pkgs-gnome-48.gsettings-desktop-schemas;
+  gvfs = pkgs-gnome-48.gvfs;
   mutter = pkgs-gnome-48.mutter;
   nautilus = pkgs-gnome-48.nautilus;
   orca = pkgs-gnome-48.orca;
