@@ -11,6 +11,29 @@
     flake-utils,
     ...
   }: let
+    nixosModules = rec {
+      # Complete non-graphical Fairphone 5 configuration.
+      minimal = {
+        imports = [
+          ./modules/audio
+          ./modules/bootmac
+          ./modules/hardware
+          ./modules/modem
+        ];
+      };
+
+      # Add the GNOME Mobile desktop to the minimal configuration.
+      gnome-mobile = {
+        imports = [
+          minimal
+          ./modules/gnome-mobile
+        ];
+      };
+
+      # Use `gnome-mobile` as the default module.
+      default = gnome-mobile;
+    };
+
     # Builds the boot image that can be flashed to the `boot` partition using fastboot.
     mkBootImage = nixosConfig: pkgs:
       pkgs.runCommand "boot.img" {
@@ -161,13 +184,19 @@
         gnome-mobile = nixpkgs.lib.nixosSystem {
           inherit system;
 
-          modules = [./hosts/gnome-mobile];
+          modules = [
+            nixosModules.gnome-mobile
+            ./hosts/gnome-mobile
+          ];
           pkgs = exampleConfigPkgs;
         };
         minimal = nixpkgs.lib.nixosSystem {
           inherit system;
 
-          modules = [./hosts/minimal];
+          modules = [
+            nixosModules.minimal
+            ./hosts/minimal
+          ];
           pkgs = exampleConfigPkgs;
         };
       };
@@ -191,37 +220,7 @@
       };
 
       # NixOS modules for external consumption.
-      nixosModules = {
-        minimal = {
-          imports = [
-            ./modules/audio
-            ./modules/bootmac
-            ./modules/hardware
-            ./modules/modem
-          ];
-        };
-
-        gnome-mobile = {
-          imports = [
-            ./modules/audio
-            ./modules/bootmac
-            ./modules/hardware
-            ./modules/modem
-            ./modules/gnome-mobile
-          ];
-        };
-
-        # Export `gnome-mobile` as the default module.
-        default = {
-          imports = [
-            ./modules/audio
-            ./modules/bootmac
-            ./modules/hardware
-            ./modules/modem
-            ./modules/gnome-mobile
-          ];
-        };
-      };
+      inherit nixosModules;
 
       # Separate overlays for more custom use cases.
       overlays = let

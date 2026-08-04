@@ -1,9 +1,4 @@
 {
-  # Import hardware-specific configuration for Fairphone 5.
-  imports = [
-    ../../modules/hardware
-  ];
-
   networking.hostName = "fairphone";
 
   # Enable experimental Nix features (flakes).
