@@ -19,6 +19,7 @@
           ./modules/bootmac
           ./modules/hardware
           ./modules/modem
+          ./modules/sensors
         ];
       };
 

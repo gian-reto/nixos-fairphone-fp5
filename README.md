@@ -21,6 +21,9 @@ The Fairphone 5 uses a Qualcomm QCM6490 SoC, which is based on the ARM architect
 - Camera: Selfie and wide-angle cameras work (quality is not amazing)
 - Cellular modem: Works
 - Screen: Works
+- Sensors: Partially works
+  - Accelerometer: Reports the correct device orientation, but GNOME Mobile 48 autorotate does not work for some reason
+  - Ambient light: Detected, but only reports an initial value of 0 lux without useful updates
 - Touchscreen: Works
 - Wi-Fi: Works
 
