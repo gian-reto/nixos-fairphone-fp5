@@ -116,6 +116,10 @@ in
         name = "hci-qca-drop-unused-event";
         patch = ./patches/hci-qca-drop-unused-event.patch;
       }
+      {
+        name = "pinctrl-lpass-lpi-defer-on-clk-timeout";
+        patch = ./patches/pinctrl-lpass-lpi-defer-on-clk-timeout.patch;
+      }
     ];
     modDirVersion = kernelVersion;
     src = kernelSrc;
