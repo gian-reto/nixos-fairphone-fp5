@@ -1,13 +1,4 @@
 {pkgs, ...}: {
-  # Import hardware-specific configuration for Fairphone 5 and GNOME Mobile.
-  imports = [
-    ../../modules/audio
-    ../../modules/bootmac
-    ../../modules/hardware
-    ../../modules/modem
-    ../../modules/gnome-mobile
-  ];
-
   networking.hostName = "fairphone";
 
   # Enable Qualcomm modem support.
