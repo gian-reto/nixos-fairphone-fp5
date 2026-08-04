@@ -108,16 +108,6 @@ in {
         '';
       };
     };
-
-    autoRotate = {
-      enable = lib.mkOption {
-        type = lib.types.bool;
-        default = true;
-        description = ''
-          Enable rotation detection using IIO sensors.
-        '';
-      };
-    };
   };
 
   imports = [
@@ -229,10 +219,5 @@ in {
 
     # Enable location services (geoclue) for GNOME.
     services.geoclue2.enable = cfg.locationServices.enable;
-
-    # FIXME: Currently seems broken, or needs userland support in GNOME?
-    #
-    # Enable automatic screen rotation (if supported by hardware).
-    hardware.sensor.iio.enable = lib.mkDefault cfg.autoRotate.enable;
   };
 }
