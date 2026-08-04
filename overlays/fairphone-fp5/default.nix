@@ -5,6 +5,12 @@ final: prev: {
   # runs during firmware preparation (not on the device).
   pil-squasher = final.callPackage ../../packages/pil-squasher {};
 
+  # ALSA UCM2 profiles for the Fairphone 5 sound card.
+  alsa-ucm-conf-fairphone-fp5 = final.callPackage ../../packages/alsa-ucm-conf-fairphone-fp5 {};
+
+  # WirePlumber configuration for Qualcomm audio on Fairphone 5.
+  wireplumber-config-fairphone-fp5 = final.callPackage ../../packages/wireplumber-config-fairphone-fp5 {};
+
   # Firmware package for Fairphone 5.
   firmware-fairphone-fp5 = final.callPackage ../../packages/firmware {};
 

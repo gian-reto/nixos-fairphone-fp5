@@ -1,0 +1,26 @@
+diff --git a/drivers/pinctrl/qcom/pinctrl-lpass-lpi.c b/drivers/pinctrl/qcom/pinctrl-lpass-lpi.c
+index 76aed3296279..06b6e57dfea7 100644
+--- a/drivers/pinctrl/qcom/pinctrl-lpass-lpi.c
++++ b/drivers/pinctrl/qcom/pinctrl-lpass-lpi.c
+@@ -500,8 +500,20 @@ int lpi_pinctrl_probe(struct platform_device *pdev)
+ 		return ret;
+ 
+ 	ret = clk_bulk_prepare_enable(MAX_LPI_NUM_CLKS, pctrl->clks);
+-	if (ret)
++	if (ret) {
++		/*
++		 * The core/audio clocks are provided by the ADSP (through
++		 * q6prm over GLINK). If the ADSP has not booted yet, the
++		 * clock enable request times out instead of deferring.
++		 * Translate the timeout into a probe deferral so the probe
++		 * is retried once the ADSP is up, instead of failing
++		 * permanently and leaving the whole sound card stuck in
++		 * deferred probe.
++		 */
++		if (ret == -ETIMEDOUT)
++			ret = -EPROBE_DEFER;
+ 		return dev_err_probe(dev, ret, "Can't enable clocks\n");
++	}
+ 
+ 	pctrl->desc.pctlops = &lpi_gpio_pinctrl_ops;
+ 	pctrl->desc.pmxops = &lpi_gpio_pinmux_ops;

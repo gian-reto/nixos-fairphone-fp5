@@ -96,16 +96,6 @@ in {
       };
     };
 
-    pipewire = {
-      enable = lib.mkOption {
-        type = lib.types.bool;
-        default = true;
-        description = ''
-          Enable PipeWire for audio.
-        '';
-      };
-    };
-
     locationServices = {
       enable = lib.mkOption {
         type = lib.types.bool;
@@ -228,22 +218,6 @@ in {
       wantedBy = ["NetworkManager.service"];
       partOf = ["NetworkManager.service"];
       after = ["NetworkManager.service"];
-    };
-
-    # FIXME: Audio hardware is not yet detected on the Fairphone, which is not
-    # a problem with PipeWire itself.
-    #
-    # Enable sound with PipeWire.
-    services.pulseaudio = lib.mkIf cfg.pipewire.enable {
-      enable = lib.mkForce false;
-    };
-    security.rtkit.enable = cfg.pipewire.enable;
-    services.pipewire = lib.mkIf cfg.pipewire.enable {
-      enable = true;
-
-      alsa.enable = true;
-      alsa.support32Bit = true;
-      pulse.enable = true;
     };
 
     # Enable Bluetooth.

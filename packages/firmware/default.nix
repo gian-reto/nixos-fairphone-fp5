@@ -8,14 +8,14 @@
 stdenv.mkDerivation {
   pname = "fp5-firmware";
   # No versioned releases, so let's use the commit hash for now.
-  version = "ebb4d6a47865e78a9fd6689394221a5bb3d621dd";
+  version = "a4908f548e6f88965e78b1478af1751b6a854fc9";
 
   # Source: https://github.com/FairBlobs/FP5-firmware.
   src = fetchFromGitHub {
     owner = "FairBlobs";
     repo = "FP5-firmware";
-    rev = "ebb4d6a47865e78a9fd6689394221a5bb3d621dd";
-    hash = "sha256-SVZqkSYyQw876dQ4sjW2/G33y+jA73bhylT+FhvdoGk=";
+    rev = "a4908f548e6f88965e78b1478af1751b6a854fc9";
+    hash = "sha256-XRklo4XfRrskmIxdyY9duU8nF0svoQV90KwaF15ISjk=";
   };
 
   meta = {
@@ -72,6 +72,10 @@ stdenv.mkDerivation {
     install -Dm644 yupik_ipa_fws.mbn \
       "$out/lib/firmware/qcom/qcm6490/fairphone5/ipa_fws.mbn"
 
+    # Install audio amplifier firmware for the AW88261 codec.
+    install -Dm644 aw882xx_acf.bin \
+      "$out/lib/firmware/qcom/qcm6490/fairphone5/aw88261_acf.bin"
+
     # Install Venus video firmware (renamed to venus.mbn for kernel compatibility).
     install -Dm644 vpu20_1v.mbn \
       "$out/lib/firmware/qcom/qcm6490/fairphone5/venus.mbn"
@@ -89,12 +93,10 @@ stdenv.mkDerivation {
     # Set permissions to 0644 for all modem_pr files.
     find "$out/lib/firmware/qcom/qcm6490/fairphone5/modem_pr" -type f -exec chmod 0644 {} \;
 
-    # Install HexagonFS to /usr/share (excluding acdb/ and dsp/ subdirs).
+    # Install HexagonFS to /usr/share. The FastRPC server exposes these files
+    # directly from the device-specific directory to the ADSP.
     mkdir -p "$out/usr/share/qcom/qcm6490/Fairphone/fp5"
-
-    # Copy only sensors/ and socinfo/ subdirectories (exclude acdb/ and dsp/).
-    cp -r hexagonfs/sensors "$out/usr/share/qcom/qcm6490/Fairphone/fp5/"
-    cp -r hexagonfs/socinfo "$out/usr/share/qcom/qcm6490/Fairphone/fp5/"
+    cp -r hexagonfs/. "$out/usr/share/qcom/qcm6490/Fairphone/fp5/"
 
     # Set permissions to 0644 for HexagonFS files.
     find "$out/usr/share/qcom/qcm6490/Fairphone/fp5" -type f -exec chmod 0644 {} \;
