@@ -77,24 +77,33 @@ in {
         # `CONFIG_RD_GZIP=y` for ramdisk decompression.
         compressor = "gzip";
 
-        # Kernel modules required in initramfs for device boot.
+        # Configure kernel modules in the initramfs for device boot.
         # See: https://gitlab.postmarketos.org/postmarketOS/pmaports/-/blob/master/device/testing/device-fairphone-fp5/modules-initfs.
-        availableKernelModules = [
+        availableKernelModules = {
           # Device-specific drivers.
-          "fsa4480" # USB-C audio switch.
-          "goodix_berlin_core" # Touchscreen core driver.
-          "goodix_berlin_spi" # Touchscreen SPI interface.
-          "msm"
-          "panel-raydium-rm692e5" # Display panel driver.
-          "ptn36502" # USB-C redriver.
-          "spi-geni-qcom" # Qualcomm SPI controller.
-        ];
+          fsa4480 = true; # USB-C audio switch.
+          goodix_berlin_core = true; # Touchscreen core driver.
+          goodix_berlin_spi = true; # Touchscreen SPI interface.
+          msm = true;
+          panel-raydium-rm692e5 = true; # Display panel driver.
+          ptn36502 = true; # USB-C redriver.
+          spi-geni-qcom = true; # Qualcomm SPI controller.
+
+          # The systemd initrd requests this module because its systemd package supports
+          # EFI, but the custom kernel deliberately omits EFI support.
+          efivarfs = lib.mkForce false;
+        };
 
         # Disable default modules (like `ahci`) that don't exist in our custom kernel.
         includeDefaultModules = false;
 
-        # Use traditional stage-1 init.
-        systemd.enable = false;
+        # Use systemd-based stage 1.
+        systemd = {
+          enable = true;
+
+          # The Fairphone 5 has no TPM, and the custom kernel omits TPM drivers.
+          tpm2.enable = false;
+        };
       };
 
       # Disable GRUB bootloader, as we use Android boot image format.
@@ -138,6 +147,10 @@ in {
         fi
       '';
 
+      # Kernel command-line parameters.
+      #
+      # Important: Console order matters for both the kernel and initrd! Kernel output is
+      # sent to every configured console, while the last console becomes `/dev/console`.
       kernelParams =
         lib.mkAfter
         (
@@ -145,16 +158,10 @@ in {
             "loglevel=4"
           ]
           ++ lib.optionals cfg.serial.enable [
-            # Systemd console output configuration. This makes systemd output boot messages to
-            # the console so we can see stage-2 boot.
+            # Make systemd write stage-1 and stage-2 boot messages to the console.
             "systemd.log_target=console"
 
-            # Console outputs; Order matters for BOTH kernel and initramfs!
-            # - Kernel: LAST console becomes `/dev/console`.
-            # - Initramfs: FIRST `console=` param sets the `$console` variable.
-            #
-            # Add USB serial console (ttyGS0) if enabled. List it before ttyMSM0 so init script
-            # outputs to USB serial that we can monitor.
+            # Add the USB serial console.
             "console=ttyGS0,115200"
           ]
           ++ [

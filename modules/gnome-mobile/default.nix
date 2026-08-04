@@ -167,14 +167,9 @@ in {
       extraGSettingsOverridePackages = [pkgs.mutter];
     };
 
-    # Enable GDM (GNOME Display Manager) with Wayland.
+    # Enable GDM (GNOME Display Manager).
     services.displayManager = {
-      gdm = {
-        enable = true;
-
-        # Wayland is enabled by default, but let's be explicit.
-        wayland = true;
-      };
+      gdm.enable = true;
 
       # Set GNOME as the default session.
       defaultSession = "gnome";
