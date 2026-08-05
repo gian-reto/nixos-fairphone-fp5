@@ -120,6 +120,18 @@ in
         name = "pinctrl-lpass-lpi-defer-on-clk-timeout";
         patch = ./patches/pinctrl-lpass-lpi-defer-on-clk-timeout.patch;
       }
+      {
+        # Report the FP5 sensors' native and active pixel-array geometry so
+        # libcamera can derive crop and binning relationships correctly.
+        name = "media-fp5-sensor-crop-selection";
+        patch = ./patches/media-fp5-sensor-crop-selection.patch;
+      }
+      {
+        # Enable IMX858 MCLK before releasing reset and wait for the sensor to
+        # start, preventing I2C bus hangs after runtime power cycles.
+        name = "media-imx858-power-on-ordering";
+        patch = ./patches/media-imx858-power-on-ordering.patch;
+      }
     ];
     modDirVersion = kernelVersion;
     src = kernelSrc;

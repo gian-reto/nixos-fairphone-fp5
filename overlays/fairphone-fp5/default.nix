@@ -17,6 +17,9 @@ final: prev: {
   # Custom kernel package for Fairphone 5.
   kernel-fairphone-fp5 = final.callPackage ../../packages/kernel {};
 
+  # Libcamera with Fairphone 5 sensor metadata and tuning profiles.
+  libcamera = final.callPackage ../../packages/libcamera {};
+
   # Protection domain mapper for Qualcomm modems.
   pd-mapper = final.callPackage ../../packages/qrtr/pd-mapper.nix {};
 
