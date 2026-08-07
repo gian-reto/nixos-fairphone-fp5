@@ -132,6 +132,18 @@ in
         name = "media-imx858-power-on-ordering";
         patch = ./patches/media-imx858-power-on-ordering.patch;
       }
+      {
+        # Let USB-C Alt Mode switch the QMP Combo PHY to four-lane DisplayPort
+        # and expose all four fixed DP lanes for the Fairphone 5.
+        name = "dts-kodiak-4lane-dp-mode-switch";
+        patch = ./patches/dts-kodiak-4lane-dp-mode-switch.patch;
+      }
+      {
+        # Retry dual-display resource allocation without a DSPP when the sole
+        # hardware color-processing block is unavailable.
+        name = "dpu-dspp-reservation-fallback";
+        patch = ./patches/dpu-dspp-reservation-fallback.patch;
+      }
     ];
     modDirVersion = kernelVersion;
     src = kernelSrc;
