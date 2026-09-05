@@ -34,7 +34,7 @@ in {
   };
 
   imports = [
-    ./resize-rootfs.nix
+    ./disk-image.nix
   ];
 
   config = {
@@ -46,9 +46,11 @@ in {
     # Target architecture for Fairphone 5.
     nixpkgs.hostPlatform = "aarch64-linux";
 
+    # The custom kernel installs an EFI zboot image for systemd-boot.
+    system.boot.loader.kernelFile = "vmlinuz.efi";
+
     hardware = {
-      # Device tree configuration. Note: The DTB will be appended to the kernel `Image.gz`
-      # during boot image creation.
+      # Use the matching kernel-built DTB for the bootstrap UKI and later generations.
       deviceTree = {
         enable = true;
 
@@ -88,10 +90,6 @@ in {
           panel-raydium-rm692e5 = true; # Display panel driver.
           ptn36502 = true; # USB-C redriver.
           spi-geni-qcom = true; # Qualcomm SPI controller.
-
-          # The systemd initrd requests this module because its systemd package supports
-          # EFI, but the custom kernel deliberately omits EFI support.
-          efivarfs = lib.mkForce false;
         };
 
         # Disable default modules (like `ahci`) that don't exist in our custom kernel.
@@ -106,7 +104,7 @@ in {
         };
       };
 
-      # Disable GRUB bootloader, as we use Android boot image format.
+      # GRUB is not used.
       loader.grub.enable = false;
 
       # On first boot, perform one-time initialization tasks. This is similar to how
@@ -119,8 +117,8 @@ in {
           set -x
 
           # Register the contents of the initial Nix store.
-          # The /nix-path-registration file is created by make-ext4-fs.nix and contains
-          # the database entries for all store paths included in the rootfs image.
+          # The repart image includes /nix-path-registration with the database entries
+          # for every store path in the initial system closure.
           # Without this step, Nix doesn't know about pre-installed paths and tries to
           # build them, which fails on the device.
           ${config.nix.package.out}/bin/nix-store --load-db < /nix-path-registration
@@ -128,19 +126,6 @@ in {
           # nixos-rebuild also requires a "system" profile and an /etc/NIXOS tag.
           touch /etc/NIXOS
           ${config.nix.package.out}/bin/nix-env -p /nix/var/nix/profiles/system --set /run/current-system
-
-          # Fix ownership of per-user profile directories.
-          # During image build, these directories are created by root, but users need
-          # to own their own profile directories for home-manager to manage them.
-          if [ -d /nix/var/nix/profiles/per-user ]; then
-            for profile_dir in /nix/var/nix/profiles/per-user/*; do
-              if [ -d "$profile_dir" ]; then
-                username=$(basename "$profile_dir")
-                echo "Fixing ownership of $profile_dir for user $username"
-                chown -R "''${username}:users" "$profile_dir"
-              fi
-            done
-          fi
 
           # Prevents this from running on later boots.
           rm -f /nix-path-registration

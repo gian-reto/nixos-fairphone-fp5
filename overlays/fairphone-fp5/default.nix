@@ -17,6 +17,9 @@ final: prev: {
   # Custom kernel package for Fairphone 5.
   kernel-fairphone-fp5 = final.callPackage ../../packages/kernel {};
 
+  # U-Boot configured for the Fairphone 5.
+  uboot-fairphone-fp5 = final.callPackage ../../packages/uboot {};
+
   # Libcamera with Fairphone 5 sensor metadata and tuning profiles.
   libcamera = final.callPackage ../../packages/libcamera {};
 

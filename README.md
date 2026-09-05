@@ -58,7 +58,7 @@ If you're able to connect, you're ready to use the remote builder to build your 
 
 ### Add Module to your NixOS Configuration
 
-If you want to use NixOS your own Fairphone 5, the images built from the example configurations provided in this repository will probably not be sufficient. Instead, you can add the Fairphone 5 module to your own `flake.nix` and build your own images like this:
+If you want to use NixOS on your own Fairphone 5, the example configurations provided by this repository will probably not be sufficient. Add the Fairphone 5 module to your own configuration and expose the two image artifacts (for the initial flash) like this:
 
 ```nix
 {
@@ -68,7 +68,7 @@ If you want to use NixOS your own Fairphone 5, the images built from the example
   };
 
   outputs = { self, nixpkgs, nixos-fairphone-fp5, ... }: {
-   nixosConfigurations.my-fairphone = nixpkgs.lib.nixosSystem {
+    nixosConfigurations.my-fairphone = nixpkgs.lib.nixosSystem {
       system = "aarch64-linux";
       modules = [
         # Import the Fairphone 5 NixOS module.
@@ -79,88 +79,74 @@ If you want to use NixOS your own Fairphone 5, the images built from the example
       ];
     };
 
-    # Use the `mkBootImage` and `mkRootfsImage` functions provided by this flake to be able to build
+    # Use the `mkUbootImage` and `mkDiskImage` functions provided by this flake to be able to build
     # boot and rootfs images from your custom configuration, so you can easily flash the first
     # generation of your configuration to your Fairphone 5 using `fastboot`.
     packages.aarch64-linux =
       let
         pkgs = nixpkgs.legacyPackages.aarch64-linux;
       in {
-        boot-image = nixos-fairphone-fp5.lib.mkBootImage
-          self.nixosConfigurations.my-fairphone
-          pkgs;
+        # U-Boot image for an Android boot slot.
+        uboot-image = nixos-fairphone-fp5.lib.mkUbootImage pkgs;
 
-        rootfs-image = nixos-fairphone-fp5.lib.mkRootfsImage
-          self.nixosConfigurations.my-fairphone
-          pkgs;
-
-        # Alternatively, if you use Home Manager, use `mkRootfsImageWithHomeManager` to build the
-        # rootfs image including Home Manager configuration instead of `mkRootfsImage`:
-        #
-        # rootfs-image = nixos-fairphone-fp5.lib.mkRootfsImageWithHomeManager
-        #   self.nixosConfigurations.my-fairphone
-        #   pkgs;
+        # Nested GPT image containing the ESP and your complete NixOS system.
+        disk-image = nixos-fairphone-fp5.lib.mkDiskImage
+          self.nixosConfigurations.my-fairphone;
       };
   };
 }
 ```
 
-> [!TIP]
-> If you use remote builders, I recommend configuring Nix to always use remote builders by default on your Fairphone. This way, you don't have to rebuild locally on your phone if you do a `nixos-rebuild switch` on the device itself. Otherwise, builds might take a very long time or even fail due to insufficient resources (I have not even dared to try yet, so I'm not sure what happens!).
-
 ### Build and Flash Images
 
-1. Put your device into `fastboot` mode by turning it off first, and then holding the volume down and power button simultaneously until the device powers on and displays the `fastboot` screen.
-2. Connect the Fairphone 5 to your host machine via USB-C.
+> [!CAUTION]
+> Flashing the image permanently erases everything in `userdata`, including Android apps, files, and settings. Back up anything you need before continuing.
 
-If you added the image packages as shown above, you can simply build the images using the following commands:
+> [!TIP]
+> If you use remote builders, I recommend configuring Nix to always use remote builders by default on your Fairphone. This way, you don't have to rebuild locally on your phone when running `nixos-rebuild boot` or `nixos-rebuild switch`. Otherwise, builds might take a very long time or even fail due to insufficient resources.
 
-3. Build the boot image (locally on an `aarch64-linux` host):
+1. Build both images from the configuration shown above:
 
-```sh
-nix build .#packages.aarch64-linux.boot-image
-```
+   ```sh
+   nix build .#packages.aarch64-linux.uboot-image --out-link result-uboot
+   nix build .#packages.aarch64-linux.disk-image --out-link result-disk
+   ```
 
-Or in case you want to use nixbuild.net as a remote builder, the command is slightly different:
+   To delegate your configuration's builds to nixbuild.net, run:
 
-```sh
-nix build .#packages.aarch64-linux.boot-image --max-jobs 0 --builders "ssh://eu.nixbuild.net aarch64-linux - 100 1 big-parallel,benchmark" --option builders-use-substitutes true
-```
+   ```sh
+   nix build .#packages.aarch64-linux.uboot-image --out-link result-uboot --max-jobs 0 --builders "ssh://eu.nixbuild.net aarch64-linux - 100 1 big-parallel,benchmark" --option builders-use-substitutes true
+   nix build .#packages.aarch64-linux.disk-image --out-link result-disk --max-jobs 0 --builders "ssh://eu.nixbuild.net aarch64-linux - 100 1 big-parallel,benchmark" --option builders-use-substitutes true
+   ```
 
-4. The previous command should output a symlink called `result`, which points to the boot image you just built. You can flash the image to the phone's boot partition as follows:
+2. Turn off the phone, then hold Volume Down and Power until the fastboot screen appears.
+3. Connect the phone to the build host over USB-C.
+4. From the directory containing `result-uboot` and `result-disk`, start a shell containing the fastboot tools:
 
-```sh
-nix shell nixpkgs#android-tools -c fastboot flash boot result
-```
+   ```sh
+   nix shell nixpkgs#android-tools
+   ```
 
-5. Build the rootfs image (locally on an `aarch64-linux` host):
+5. Flash the images and reboot:
 
-```sh
-nix build .#packages.aarch64-linux.rootfs-image
-```
+   ```sh
+   fastboot flash boot result-uboot
+   fastboot erase dtbo
+   fastboot flash userdata result-disk/image.raw
+   fastboot reboot
+   ```
 
-Or in case you want to use nixbuild.net as a remote builder:
-
-```sh
-nix build .#packages.aarch64-linux.rootfs-image --max-jobs 0 --builders "ssh://eu.nixbuild.net aarch64-linux - 100 1 big-parallel,benchmark" --option builders-use-substitutes true
-```
-
-6. The previous command should again output a symlink called `result` (in fact, it overrides the existing symlink if you built the boot image before, so always make sure you have built the correct image before you flash!), which points to the rootfs image you just built. You can flash the image to the phone's userdata partition as follows:
-
-```sh
-nix shell nixpkgs#android-tools -c fastboot flash userdata result
-```
-
-7. Now that both images are flashed, you can reboot the device:
-
-```sh
-nix shell nixpkgs#android-tools -c fastboot reboot
-```
-
-Just wait until the device has fully booted, which could take a while. You should then be greeted by the login prompt or screen of your NixOS system!
+The first boot may take a while while the root filesystem expands to the available space.
 
 > [!IMPORTANT]
 > When booting NixOS, the display will show various artifacts, and the screen will be black for a brief moment. This is expected behavior and doesn't mean something is wrong. Just wait a bit until the device has fully booted and the login prompt or screen appears.
+
+### Restore Android
+
+> [!CAUTION]
+> Reinstalling Android erases NixOS and everything in `userdata`. It cannot recover previous Android user data.
+
+Reinstall Fairphone OS using Fairphone's [official manual installation instructions](https://support.fairphone.com/hc/en-us/articles/18896094650513-How-to-manually-install-Android-on-your-Fairphone).
 
 ## Advanced Usage
 
@@ -180,6 +166,7 @@ In some advanced use cases, you might want to change the process of building the
           # Now you have access to all Fairphone packages:
           # pkgs.kernel-fairphone-fp5
           # pkgs.firmware-fairphone-fp5
+          # pkgs.uboot-fairphone-fp5
           # pkgs.pd-mapper, pkgs.qrtr, pkgs.rmtfs, etc.
         }
         # Your custom configuration...
@@ -191,7 +178,7 @@ In some advanced use cases, you might want to change the process of building the
 
 ## Development & Contribution
 
-This flake outputs packages for building boot and rootfs images for the two example host configurations in `./hosts`. These can be built on their own and flashed to a Fairphone 5 as described in the "Getting Started" section above. By default, the user is called "admin", and the password is "admin" as well.
+This flake outputs the `uboot-image` package, as well as `disk-image-minimal` and `disk-image-gnome-mobile` packages for the example host configurations in `./hosts`. These can be built and flashed as described above. By default, the example user is called "admin", and the password is "admin" as well.
 
 At the moment, the development process is mostly done by changing code, building new images, and then testing them on the device. This can be quite tedious, as the build times are relatively long (even with a remote builder), but for now this is the best way to make sure everything works as expected on the actual hardware.
 
