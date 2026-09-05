@@ -19,6 +19,7 @@
           ./modules/bootmac
           ./modules/hardware
           ./modules/modem
+          ./modules/qbootctl
           ./modules/sensors
         ];
       };
@@ -35,134 +36,31 @@
       default = gnome-mobile;
     };
 
-    # Builds the boot image that can be flashed to the `boot` partition using fastboot.
-    mkBootImage = nixosConfig: pkgs:
-      pkgs.runCommand "boot.img" {
-        nativeBuildInputs = with pkgs; [android-tools];
+    # Builds the persistent U-Boot image flashed to an Android `boot` slot.
+    mkUbootImage = pkgs: let
+      uboot = pkgs.uboot-fairphone-fp5 or (pkgs.callPackage ./packages/uboot {});
+    in
+      pkgs.runCommand "uboot.img" {
+        nativeBuildInputs = with pkgs; [android-tools gzip];
       } ''
-        # Get paths from NixOS configuration.
-        kernelPath="${nixosConfig.config.system.build.kernel}"
-        initrdPath="${nixosConfig.config.system.build.initialRamdisk}/initrd"
-        initPath="${builtins.unsafeDiscardStringContext nixosConfig.config.system.build.toplevel}/init"
+        gzip --no-name --stdout "${uboot}/u-boot-nodtb.bin" > u-boot-nodtb.bin.gz
 
-        # Build kernel command line from NixOS config parameters.
-        # Add init= parameter to kernel params from config.
-        kernelParams="${builtins.toString nixosConfig.config.boot.kernelParams}"
-        cmdline="$kernelParams init=$initPath"
-
-        # Concatenate kernel (Image.gz) with device tree blob.
-        # The bootloader expects them as a single file.
-        echo "Concatenating kernel and DTB..."
-        cat "$kernelPath/Image.gz" "$kernelPath/dtbs/qcom/qcm6490-fairphone-fp5.dtb" > Image-with-dtb.gz
-
-        # Build Android boot image using mkbootimg.
-        # Parameters based on PostmarketOS deviceinfo.
-        echo "Building boot image with mkbootimg..."
-        echo "Using cmdline: $cmdline"
         mkbootimg \
           --header_version 2 \
-          --kernel Image-with-dtb.gz \
-          --ramdisk "$initrdPath" \
-          --cmdline "$cmdline" \
+          --kernel u-boot-nodtb.bin.gz \
+          --dtb "${uboot}/qcm6490-fairphone-fp5.dtb" \
           --base 0x00000000 \
           --kernel_offset 0x00008000 \
           --ramdisk_offset 0x01000000 \
-          --dtb_offset 0x01f00000 \
+          --second_offset 0x00000000 \
           --tags_offset 0x00000100 \
+          --dtb_offset 0x01f00000 \
           --pagesize 4096 \
-          --dtb "$kernelPath/dtbs/qcom/qcm6490-fairphone-fp5.dtb" \
-          -o "$out"
-
-        echo "Boot image created successfully: $out"
-        echo "Size: $(stat -c%s "$out") bytes"
+          --output "$out"
       '';
 
-    # Builds an `ext4` image containing the NixOS system that can be flashed to the `userdata`
-    # partition using fastboot.
-    mkRootfsImage = nixosConfig: pkgs:
-      pkgs.callPackage "${pkgs.path}/nixos/lib/make-ext4-fs.nix" {
-        storePaths = [nixosConfig.config.system.build.toplevel];
-        # Don't compress, as firmware needs to be uncompressed.
-        compressImage = false;
-        # Must match `fileSystems."/".device` label defined in`modules/hardware/default.nix`!
-        volumeLabel = "nixos";
-        populateImageCommands = ''
-          # Create the profile directory structure.
-          mkdir -p ./files/nix/var/nix/profiles
-
-          # Create first-generation NixOS profile and point to our initial toplevel.
-          ln -s ${nixosConfig.config.system.build.toplevel} ./files/nix/var/nix/profiles/system-1-link
-
-          # Set "system" to point to first-generation profile.
-          ln -s system-1-link ./files/nix/var/nix/profiles/system
-
-          # The bootloader expects /init, so point it to the profile's init.
-          # This symlink never needs to change!
-
-          # The Android bootloader appends init=/init to the kernel cmdline, which
-          # overrides our init=/nix/var/.../init parameter. Instead of fighting the
-          # bootloader, we create the symlink it expects. Note: This symlink is
-          # stable and always points to the current generation.
-          ln -s /nix/var/nix/profiles/system/init ./files/init
-        '';
-      };
-
-    # Builds an `ext4` image containing the NixOS system that can be flashed to the `userdata`
-    # partition using fastboot, but with additional `home-manager` support.
-    mkRootfsImageWithHomeManager = nixosConfig: pkgs: let
-      # Get all users that have `home-manager` configurations.
-      hmUsers = builtins.attrNames (nixosConfig.config.home-manager.users or {});
-
-      # Collect all `home-manager` activation packages.
-      hmActivationPackages =
-        builtins.map
-        (user: nixosConfig.config.home-manager.users.${user}.home.activationPackage)
-        hmUsers;
-    in
-      pkgs.callPackage "${pkgs.path}/nixos/lib/make-ext4-fs.nix" {
-        storePaths =
-          [
-            nixosConfig.config.system.build.toplevel
-          ]
-          ++ hmActivationPackages; # Include all home-manager activation packages
-        # Don't compress, as firmware needs to be uncompressed.
-        compressImage = false;
-        # Must match `fileSystems."/".device` label defined in`modules/hardware/default.nix`!
-        volumeLabel = "nixos";
-
-        populateImageCommands = ''
-          # Create the profile directory structure.
-          mkdir -p ./files/nix/var/nix/profiles
-          mkdir -p ./files/nix/var/nix/profiles/per-user
-
-          # Create first-generation NixOS profile.
-          ln -s ${nixosConfig.config.system.build.toplevel} ./files/nix/var/nix/profiles/system-1-link
-          # Set "system" to point to first-generation profile.
-          ln -s system-1-link ./files/nix/var/nix/profiles/system
-
-          # The bootloader expects /init.
-          ln -s /nix/var/nix/profiles/system/init ./files/init
-
-          # Create home-manager profiles for each user.
-          ${builtins.concatStringsSep "\n" (builtins.map (user: ''
-              # Create profile directory for ${user}.
-              mkdir -p ./files/nix/var/nix/profiles/per-user/${user}
-
-              # Create first-generation home-manager profile for ${user}.
-              ln -s ${nixosConfig.config.home-manager.users.${user}.home.activationPackage} \
-                ./files/nix/var/nix/profiles/per-user/${user}/home-manager-1-link
-              # Set home-manager to point to first-generation home profile.
-              ln -s home-manager-1-link \
-                ./files/nix/var/nix/profiles/per-user/${user}/home-manager
-
-              # Create user's .nix-profile symlink.
-              mkdir -p ./files/home/${user}
-              ln -s /nix/var/nix/profiles/per-user/${user}/home-manager \
-                ./files/home/${user}/.nix-profile
-            '')
-            hmUsers)}
-        '';
-      };
+    # Returns the repart disk image built by the supplied NixOS configuration.
+    mkDiskImage = nixosConfig: nixosConfig.config.system.build.image;
   in
     flake-utils.lib.eachSystem ["aarch64-linux"] (system: let
       # Nixpkgs for building test images.
@@ -204,20 +102,22 @@
     in {
       # Example images built from internal host configs for testing.
       packages =
-        nixpkgs.lib.foldlAttrs
-        (acc: name: nixosConfig:
-          acc
-          // {
-            "boot-image-${name}" = mkBootImage nixosConfig exampleConfigPkgs;
-            "rootfs-image-${name}" = mkRootfsImage nixosConfig exampleConfigPkgs;
-          })
-        {}
-        exampleNixosConfigurations;
+        (nixpkgs.lib.foldlAttrs
+          (acc: name: nixosConfig:
+            acc
+            // {
+              "disk-image-${name}" = mkDiskImage nixosConfig;
+            })
+          {}
+          exampleNixosConfigurations)
+        // {
+          uboot-image = mkUbootImage exampleConfigPkgs;
+        };
     })
     // {
       # Reusable library functions.
       lib = {
-        inherit mkBootImage mkRootfsImage mkRootfsImageWithHomeManager;
+        inherit mkDiskImage mkUbootImage;
       };
 
       # NixOS modules for external consumption.

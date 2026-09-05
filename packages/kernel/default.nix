@@ -3,6 +3,7 @@
   lib,
   linuxKernel,
   runCommand,
+  stdenv,
   ...
 }: let
   # Note: Keep this in sync with the Makefile in the pinned
@@ -66,14 +67,12 @@
     # Enables firewall logging.
     NETFILTER_XT_TARGET_LOG = "m";
 
-    # Android boot-image compatibility.
+    # EFI boot compatibility.
     #
-    # Keep the validated non-EFI `Image.gz` boot flow used by the stock bootloader.
-    # With `EFI_ZBOOT` enabled, the kernel's `zinstall` target would install
-    # `vmlinuz.efi` instead.
-    EFI = "n";
-    EFI_STUB = "n";
-    EFI_ZBOOT = "n";
+    # U-Boot provides the UEFI environment used by systemd-boot.
+    EFI = "y";
+    EFI_STUB = "y";
+    EFI_ZBOOT = "y";
 
     # Misc. features.
     #
@@ -111,6 +110,7 @@ in
     inherit configfile lib;
 
     config = mergedConfig;
+    features.efiBootStub = true;
     kernelPatches = [
       {
         name = "hci-qca-drop-unused-event";
@@ -147,7 +147,15 @@ in
     ];
     modDirVersion = kernelVersion;
     src = kernelSrc;
-    # Produce compressed kernel image target expected by the bootloader.
-    target = "Image.gz";
+    # Produce the compressed EFI application loaded by systemd-boot.
+    target = "vmlinuz.efi";
+    stdenv = stdenv.override {
+      hostPlatform = stdenv.hostPlatform // {
+        linux-kernel = stdenv.hostPlatform.linux-kernel // {
+          target = "vmlinuz.efi";
+          installTarget = "zinstall";
+        };
+      };
+    };
     version = kernelVersion;
   }

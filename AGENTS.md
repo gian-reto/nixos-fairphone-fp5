@@ -66,3 +66,16 @@ You can look at the file tree yourself, but there are some notable files and fol
 
 - `README.md`: The main README file with general information about the project.
 - `flake.nix`: The main Nix flake, which defines the devshell for the user, as well as the flake outputs and build commands (e.g. for building the kernel, the boot image, root image, etc.).
+
+## Boot Architecture
+
+The initial installation consists of two independent artifacts:
+
+- `mkUbootImage` creates an Android boot-header-v2 image containing compressed U-Boot and the upstream Fairphone 5 DTB. It is flashed to one Android `boot` slot and normally remains unchanged across NixOS updates.
+- `mkDiskImage` returns the supplied NixOS configuration's repart image. It is flashed to the outer Android `userdata` partition and contains a nested GPT with 15 MiB of padding, a fixed 1 GiB EFI System Partition, and a minimized ext4 NixOS root partition.
+
+U-Boot's preboot environment maps the complete outer `userdata` partition as a block device. It discovers systemd-boot on the nested ESP and starts `nixos-bootstrap.efi`. During first boot, systemd-repart expands the inner root partition and systemd-growfs expands ext4 to the remaining `userdata` capacity.
+
+Subsequent `nixos-rebuild boot` operations install the EFI zboot kernel, initrd, DTB, and generation entries on the ESP. The U-Boot image does not need to be rebuilt or reflashed for ordinary NixOS updates.
+
+The `qbootctl` service marks the current Android A/B slot as successfully booted as part of reaching `multi-user.target`.

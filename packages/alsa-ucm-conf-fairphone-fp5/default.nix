@@ -23,6 +23,12 @@ stdenvNoCC.mkDerivation {
     mkdir -p "$out/share/alsa"
     cp -r ucm2 "$out/share/alsa/"
 
+    # UCM2 resolves profiles by ALSA card long name. U-Boot's UEFI handoff
+    # exposes SMBIOS/DMI data, so ALSA uses "fairphone-Fairphone5" instead of
+    # "Fairphone 5".
+    ln -s "Fairphone 5.conf" \
+      "$out/share/alsa/ucm2/conf.d/qcm6490/fairphone-Fairphone5.conf"
+
     runHook postInstall
   '';
 
