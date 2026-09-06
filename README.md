@@ -15,7 +15,7 @@ The Fairphone 5 uses a Qualcomm QCM6490 SoC, which is based on the ARM architect
 
 ### Supported Hardware
 
-- Audio: Both speakers and microphone are broken
+- Audio: Works (speaker and microphone)
 - Battery: Works
 - Bluetooth: Works (with audio support)
 - Camera: Selfie and wide-angle cameras work (quality is not amazing)
@@ -191,5 +191,6 @@ Coding agents must adhere to the instructions and guidelines outlined in [AGENTS
 ## Thanks
 
 - Huge thanks to the PostmarketOS community for their incredible work on porting Linux to the Fairphone 5 (especially to Luca Weiss, the main maintainer of the Fairphone ports) and other devices. Their efforts have laid the groundwork for this NixOS port, and their documentation and resources have been invaluable throughout the development process.
+- Special thanks to [Marcus Ramberg](https://github.com/marcusramberg) for his extensive work on his [NixOS Fairphone 5 fork](https://github.com/marcusramberg/nixos-fairphone-fp5), which provided valuable implementations for many of this project's improvements (U-Boot, speaker and microphone support, light sensor and camera improvements, etc.).
 - This port was also inspired by [MatthewCroughan/nixos-qcm6490](https://github.com/MatthewCroughan/nixos-qcm6490), which is an attempt to port NixOS to the SHIFTphone 8 (otter), which uses the same SoC as the Fairphone 5. Not sure if the port was successful, but the code was still an invaluable reference. Thanks, Matthew!
 - [chuangzhu/nixpkgs-gnome-mobile](https://github.com/chuangzhu/nixpkgs-gnome-mobile) was an invaluable resource for getting GNOME Mobile to work on NixOS.
