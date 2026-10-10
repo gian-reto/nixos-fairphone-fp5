@@ -1,5 +1,6 @@
 {
   fetchFromGitHub,
+  fetchurl,
   lib,
   linuxKernel,
   runCommand,
@@ -80,6 +81,9 @@
     ANDROID_BINDERFS = "y";
     # Enables DisplayPort Alt Mode negotiation.
     TYPEC_DP_ALTMODE = "y";
+
+    # Qualcomm modem voice-call audio.
+    SND_SOC_QDSP6_Q6VOICE = "y";
   };
 
   overrideLines =
@@ -112,6 +116,13 @@ in
     config = mergedConfig;
     features.efiBootStub = true;
     kernelPatches = [
+      {
+        name = "fp5-q6voice";
+        patch = fetchurl {
+          url = "https://github.com/wrenix/linux/compare/17425f528fe51fef6e86847e92baffab3b78623e...6c1c703999e3f5438fa050fc24271ef6e9e7f972.diff";
+          hash = "sha256-t8OWCVkzp14bpB8KCmdaHITH0krMdzDKOt+US5Tr9xU=";
+        };
+      }
       {
         name = "hci-qca-drop-unused-event";
         patch = ./patches/hci-qca-drop-unused-event.patch;

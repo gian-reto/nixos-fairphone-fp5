@@ -11,6 +11,9 @@ final: prev: {
   # WirePlumber configuration for Qualcomm audio on Fairphone 5.
   wireplumber-config-fairphone-fp5 = final.callPackage ../../packages/wireplumber-config-fairphone-fp5 {};
 
+  # Keep Qualcomm hostless RX/TX voice streams open during calls.
+  dummystreamhack = final.callPackage ../../packages/dummystreamhack {};
+
   # Firmware package for Fairphone 5.
   firmware-fairphone-fp5 = final.callPackage ../../packages/firmware {};
 

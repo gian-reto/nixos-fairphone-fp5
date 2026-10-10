@@ -27,6 +27,18 @@ in {
   };
 
   config = lib.mkIf cfg.enable {
+    # Open the modem's hostless RX/TX streams after UCM configures the
+    # audio routes. The Voice Call profile starts and stops each instance;
+    # %I expands to its ALSA stream argument, e.g. Rhw:F5,7 or Thw:F5,7.
+    systemd.user.services."dummystreamhack@" = {
+      description = "Qualcomm voice-call ALSA stream";
+
+      serviceConfig = {
+        ExecStart = "${pkgs.dummystreamhack}/bin/dummystreamhack %I";
+        KillMode = "process";
+      };
+    };
+
     # Attach the FastRPC server to the ADSP sensors protection domain and expose
     # its HexagonFS files. The explicit device path is required because the
     # conventional /usr/share/qcom path does not contain package files on NixOS.
