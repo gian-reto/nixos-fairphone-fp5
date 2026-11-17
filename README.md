@@ -11,7 +11,7 @@ The Fairphone 5 uses a Qualcomm QCM6490 SoC, which is based on the ARM architect
 
 ## Current Status
 
-- Kernel: 7.1.2 ([`sc7280-mainline/linux@17425f5`](https://github.com/sc7280-mainline/linux/commit/17425f528fe51fef6e86847e92baffab3b78623e))
+- Kernel: 7.2.9 ([`sc7280-mainline/linux@0ccea71`](https://github.com/sc7280-mainline/linux/commit/0ccea71930dbc8e32344a41be96944db4215c3c3), tag `v7.2.9-sc7280`)
 
 ### Supported Hardware
 
