@@ -8,22 +8,26 @@
 }: let
   # Note: Keep this in sync with the Makefile in the pinned
   # https://github.com/sc7280-mainline/linux source.
-  kernelVersion = "7.1.2";
+  kernelVersion = "7.2.9";
 
   # Kernel source from https://github.com/sc7280-mainline/linux.
   kernelSrc = fetchFromGitHub {
     owner = "sc7280-mainline";
     repo = "linux";
-    # Note: Update the `kernelVersion` above when updating this revision.
-    rev = "17425f528fe51fef6e86847e92baffab3b78623e";
-    hash = "sha256-Q4mFSrRUS1+RIoPpdTxHr1lg5Ba2H9EPGJB20yOnKT0=";
+    # Tag `v7.2.9-sc7280`, the release postmarketOS packages as
+    # `linux-postmarketos-qcom-sc7280` 7.2.9-r3. Update the `kernelVersion`
+    # above when updating this revision.
+    rev = "0ccea71930dbc8e32344a41be96944db4215c3c3";
+    hash = "sha256-hhrOL2GrReoIY0w392S6Cc7RAnPEE3kHUKfe8HchWso=";
   };
 
   # Upstream postmarketOS configuration for the SC7280 device, see:
   # https://gitlab.postmarketos.org/postmarketOS/pmaports/-/blob/main/device/community/linux-postmarketos-qcom-sc7280/config-postmarketos-qcom-sc7280.aarch64.
   pmosConfigFile = builtins.fetchurl {
-    url = "https://gitlab.postmarketos.org/postmarketOS/pmaports/-/raw/c9dbdc23ae775aa5cea8b857c123f1696c04528f/device/community/linux-postmarketos-qcom-sc7280/config-postmarketos-qcom-sc7280.aarch64";
-    sha256 = "1vjffmn4wx6b6yxp7cn80qpzm744n8h5wci5xwxrpf5f17rq9w87";
+    # Pinned to the last pmaports commit that changed the config
+    # ("linux-postmarketos-qcom-sc7280: enable RAID kconfig options").
+    url = "https://gitlab.postmarketos.org/postmarketOS/pmaports/-/raw/b31424eba8ce39ffa1352e7bcb406627de2ac4d0/device/community/linux-postmarketos-qcom-sc7280/config-postmarketos-qcom-sc7280.aarch64";
+    sha256 = "03zbrfd8vza1r11kddmfl87gfi9fdgdakn1hnzzcl97vhsahbiqr";
   };
 
   # Parse enabled module and built-in options in the same format as nixpkgs.
