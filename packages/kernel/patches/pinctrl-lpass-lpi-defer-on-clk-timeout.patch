@@ -1,26 +1,62 @@
 diff --git a/drivers/pinctrl/qcom/pinctrl-lpass-lpi.c b/drivers/pinctrl/qcom/pinctrl-lpass-lpi.c
-index 76aed3296279..06b6e57dfea7 100644
+index 5fd4a4eba..3ead72c3b 100644
 --- a/drivers/pinctrl/qcom/pinctrl-lpass-lpi.c
 +++ b/drivers/pinctrl/qcom/pinctrl-lpass-lpi.c
-@@ -500,8 +500,20 @@ int lpi_pinctrl_probe(struct platform_device *pdev)
+@@ -65,12 +65,29 @@ static void lpi_gpio_write_reg(struct lpi_pinctrl *state,
+ 	iowrite32(val, lpi_gpio_reg(state, pin, addr));
+ }
+ 
++/*
++ * The LPI core/audio clocks are provided by the ADSP (through q6prm over
++ * GLINK). While the ADSP has not booted yet, enabling them times out instead
++ * of returning a deferral. Report that as -EPROBE_DEFER so the consumer that
++ * triggered the pin access (codec, sound card) is retried once the ADSP is up
++ * instead of failing permanently.
++ */
++static int lpi_pinctrl_resume(struct lpi_pinctrl *pctrl)
++{
++	int ret = pm_runtime_resume_and_get(pctrl->dev);
++
++	if (ret == -ETIMEDOUT)
++		return -EPROBE_DEFER;
++
++	return ret;
++}
++
+ static int lpi_gpio_read(struct lpi_pinctrl *state, unsigned int pin,
+ 			 unsigned int addr, u32 *val)
+ {
+ 	int ret;
+ 
+-	ret = pm_runtime_resume_and_get(state->dev);
++	ret = lpi_pinctrl_resume(state);
+ 	if (ret < 0)
  		return ret;
  
- 	ret = clk_bulk_prepare_enable(MAX_LPI_NUM_CLKS, pctrl->clks);
--	if (ret)
-+	if (ret) {
-+		/*
-+		 * The core/audio clocks are provided by the ADSP (through
-+		 * q6prm over GLINK). If the ADSP has not booted yet, the
-+		 * clock enable request times out instead of deferring.
-+		 * Translate the timeout into a probe deferral so the probe
-+		 * is retried once the ADSP is up, instead of failing
-+		 * permanently and leaving the whole sound card stuck in
-+		 * deferred probe.
-+		 */
-+		if (ret == -ETIMEDOUT)
-+			ret = -EPROBE_DEFER;
- 		return dev_err_probe(dev, ret, "Can't enable clocks\n");
-+	}
+@@ -131,7 +148,7 @@ static int lpi_gpio_set_mux(struct pinctrl_dev *pctldev, unsigned int function,
+ 	if (WARN_ON(i == g->nfuncs))
+ 		return -EINVAL;
  
- 	pctrl->desc.pctlops = &lpi_gpio_pinctrl_ops;
- 	pctrl->desc.pmxops = &lpi_gpio_pinmux_ops;
+-	ret = pm_runtime_resume_and_get(pctrl->dev);
++	ret = lpi_pinctrl_resume(pctrl);
+ 	if (ret < 0)
+ 		return ret;
+ 
+@@ -248,7 +265,7 @@ static int lpi_config_set_slew_rate(struct lpi_pinctrl *pctrl,
+ 	else
+ 		reg = pctrl->slew_base + LPI_SLEW_RATE_CTL_REG;
+ 
+-	ret = pm_runtime_resume_and_get(pctrl->dev);
++	ret = lpi_pinctrl_resume(pctrl);
+ 	if (ret < 0)
+ 		return ret;
+ 
+@@ -316,7 +333,7 @@ static int lpi_config_set(struct pinctrl_dev *pctldev, unsigned int group,
+ 	 * As per Hardware Programming Guide, when configuring pin as output,
+ 	 * set the pin value before setting output-enable (OE).
+ 	 */
+-	ret = pm_runtime_resume_and_get(pctrl->dev);
++	ret = lpi_pinctrl_resume(pctrl);
+ 	if (ret < 0)
+ 		return ret;
+ 
